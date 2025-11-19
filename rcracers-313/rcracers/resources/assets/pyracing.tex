@@ -1,0 +1,43 @@
+\documentclass[tikz, margin=0pt]{standalone}
+\usepackage[outline]{contour}
+
+\begin{document}
+    \fontfamily{qag}\selectfont
+   \begin{tikzpicture}
+        \definecolor{racecolor}{HTML}{1C5D99}
+        \definecolor{racecolorlight}{HTML}{0B3954}
+        \definecolor{pycolor}{HTML}{F71735}
+        \definecolor{bluebackground}{HTML}{4C7977}        
+        \definecolor{bg}{HTML}{EDAE49}
+        
+        \definecolor{pycolor}{HTML}{F18F01}
+        \definecolor{racecolorlight}{HTML}{F71735}        
+        \definecolor{bg}{HTML}{0B3954}
+        
+
+        % \colorlet{racecolor}{bluebackground}
+        
+        \fill[rounded corners, fill=bg, fill opacity=1] (-5pt,2pt) rectangle (12em, -2em); 
+        
+        \draw[thick, racecolorlight] (1em,-1pt) -- (3.7em,-1pt); 
+        \draw[thick, racecolorlight] (1.5em,-3pt) -- (4em,-3pt); 
+        % \draw[racecolor] (2em,-5pt) -- (3em,-5pt); 
+        \node[font=\Huge, anchor=north west, inner sep=0] {
+            \textit{%
+                \contour{bg}{%
+                    \textcolor{pycolor}{Rc}%
+                }%
+                % \contourlength{1pt}%how thick each copy is
+                % \contournumber{5}%number of copies
+                % \contour{racecolorlight}{%
+                    \textbf{%
+                        \textcolor{racecolorlight}{Racers}%
+                    }
+                % }%
+            }%
+        };
+        
+
+
+   \end{tikzpicture}
+\end{document}

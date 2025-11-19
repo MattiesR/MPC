@@ -1,0 +1,29 @@
+[project]
+name = "rcracers"
+readme = "README.md"
+keywords = ["optimization", "control", "MPC"]
+dynamic = ["version", "description"]
+authors = [
+  {name = "Leander Hemelhof", email = "leander.hemelhof@kuleuven.be"},
+  {name = "Renzi Wang", email = "renzi.wang@kuleuven.be"},
+  {name = "Brecht Evens", email = "brecht.evens@kuleuven.be"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: System :: Archiving",
+]
+requires-python = ">=3.8,<3.11"
+dependencies = ["numpy", "matplotlib", "scipy", "pyglet == 1.5.28", "pycddlib", "rich", "cvxpy", "casadi", "pyqt5"] # Core dependencies
+[build-system]
+requires = ["flit_core >=3.7,<4"]
+build-backend = "flit_core.buildapi"

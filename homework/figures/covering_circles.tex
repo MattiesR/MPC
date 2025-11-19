@@ -1,0 +1,30 @@
+	\begin{tikzpicture}
+		\tikzset{point/.style={circle, inner sep=1pt, fill}}
+		\newlength{\w}\setlength{\w}{4cm}
+		\newlength{\he}\setlength{\he}{2cm}
+		\node[draw=black, thick, minimum width=\w, minimum height=\he] (rect){};
+        \draw[<->, >=stealth] ($(rect.north west) + (0,0.1cm)$) -- ($(rect.north east) + (0,0.1cm)$) node[midway, above] {$l$};
+        \draw[<->, >=stealth] ($(rect.north west) - (0.1cm,0)$) -- ($(rect.south west) - (0.1,0cm)$) node[midway, left] {$w$};
+        \providecommand\ncirc{1}
+		\pgfmathsetmacro{\dl}{1/(2*(\ncirc+1))*\w}
+		\pgfmathsetmacro{\circrad}{\he / (2 * sin(atan(\he*(\ncirc+1)/\w)))}
+		\coordinate (c--1) at (-0.5\w, 0);
+		\foreach\i in {0, 1, ..., \ncirc}{
+			\pgfmathparse{(1 + 2*\i)*\dl};
+			% \pgfmathresult
+			\node[point] (c-\i) at (-0.5\w + \pgfmathresult pt, 0) {};
+			% Angle 
+			\draw[dashed] (c-\i) circle (\circrad pt);
+		}
+		% Annotate the distances between the centers 
+		\draw[<->, >=stealth] (c--1) -- (c-0) node[midway, above] {$d$};
+		\foreach\i in {1, ..., \ncirc}{
+			\pgfmathparse{\i-1}
+			\draw[<->, >=stealth] (c-\pgfmathresult) -- (c-\i) node[midway, above] {$2d$};
+		}
+		\draw[<->, >=stealth] (c-\ncirc) -- (0.5\w, 0) node[midway, above] {$d$};
+		% Compute the radius 
+		\pgfmathparse{}
+		\draw[<->, >=stealth] (c-1) -- ++(0, -\circrad pt) node[midway, right] {$r$};
+	\end{tikzpicture}
+\end{document}

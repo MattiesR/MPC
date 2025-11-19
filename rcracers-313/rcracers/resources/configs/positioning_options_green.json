@@ -1,0 +1,28 @@
+{
+    "lower": [
+        90,
+        0.2,
+        0.3
+    ],
+    "upper": [
+        255,
+        0.7,
+        0.8
+    ],
+    "marker_size": [
+        10,
+        150
+    ],
+    "blur": null,
+    "undistort": true,
+    "mask": "__default",
+    "margins": [
+        150,
+        150
+    ],
+    "correct": [
+        -0.02,
+        0,
+        -0.012
+    ]
+}

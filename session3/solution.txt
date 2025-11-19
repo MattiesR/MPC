@@ -1,0 +1,46 @@
+OZ3
+
+special case: * f(x,u) = Ax + Bu
+              * l(x,u) = 1/2(xTQx + uTRu)
+              * Vf(x) = 1/2 xT Qf x
+              * X = {x in R^n : Hx <= h}
+              * U = {x in R^m: Gx <= g}
+
+
+==> xN in Xf (plan to keep endpoint of horizon N to be in a control invariant set)
+(control invariant set ==> set where i can keep state in with feasibel control actions)
+
+==> Guarentee that the optimization problem will be feasible for all k
+
+
+Xf = kindoff safety set
+Vf(xN) = necessary for stabilizing the system (lyapunov stability)
+
+
+Oef 1.
+    if Xf in X 
+
+
+Oef 2.
+    Vinf(x) = lim N -> inf VN(x)
+    V_LQR(x) = 1/2 xTPx P solves DARE
+    ---------------------------------
+    V_LQR <= Vinf (1)
+    If K_inf "satisfies constraints"
+    then (1) we have equality
+    ---------------------------------
+    Kinf(x) = Kx
+    x in Xf
+    ==>
+    cases{
+    * Kx in U for all x in Xf
+    * (A+BK)x in Xf for all x in Xf
+    }
+
+    Xf = {x in X | (A+BK)x in Xf; Kx  in U} "recursive definition" ==> find Xf
+
+
+
+3. Not constrain u to Kx ==> might get bigger terminal set
+
+Approach ==> gives the maximal invariant set possible ( recursively feasible) But does not guarneteed the Vinf optimal cost infinite horizon

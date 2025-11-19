@@ -1,0 +1,11 @@
+numpy 
+casadi 
+pyglet==1.5.28
+matplotlib
+opencv-python
+alpaqa==1.0.0a1
+pyserial
+simple-pyspin
+rich
+pynput
+bleak

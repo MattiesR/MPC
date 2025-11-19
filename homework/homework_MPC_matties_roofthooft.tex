@@ -1,0 +1,662 @@
+\documentclass[]{article}
+\usepackage{assignment}
+\usepackage{codex}
+\usepackage{titlesec}
+\titleformat{\section}
+  {\Large\scshape}{Session \thesection}{1em}{}
+\title{H0E76A: Model Predictive Control\\\large--- Homework assignments ---}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{Matties Roofthooft}  % TODO: fill in your name
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\acyear}{2025-2026}
+\newcommand{\assignmentweight}{7/20}
+
+\newcommand{\toledo}{Toledo}
+
+\begin{document}
+\maketitle
+
+
+
+The assignments below are homework assignments related to the exercise sessions that are organized throughout the 
+semester.
+The assignments count for \assignmentweight{} of the total marks on this course, and are graded based on the following deliverables
+\begin{deliverables}
+\begin{itemize}
+	\item A report containing the answers to the questions and any numerical values or plots that are asked in the assignments. 
+	You can write your solutions directly in this \texttt{tex}-file. Make sure to fill in your name above. 
+	\item A single zip-archive containing all the code to generate the plots included in your report. 
+	Make sure to add a readme file describing which script(s) to run (and the working directory from which to do so) to reproduce your results.
+	It is recommended that you have at least one separate script per session.
+\end{itemize}
+\end{deliverables}
+Most of the assignments build upon the solutions obtained from the sessions.
+Solutions for the exercise sessions will be made available on \toledo{} shortly after each session. 
+Before submitting your final report, make sure that you verify your solutions from the sessions if you reuse them here. 
+
+\section{LQR and Dynamic programming}
+\begin{assignment} Compare the finite horizon controllers $K_{N}$ you computed during the session with the infinite horizon LQR controller.
+\begin{itemize} 
+	\item Implement the infinite horizon LQR controller $u = K_{\infty} x$ (with initial state $x_0 = (10,10)$).\footnote{Use \texttt{solve\_discrete\_are} from \texttt{scipy.linalg}.} Write the obtained value for $K_\infty$.
+	\textbf{Remark.} Report your answers with at least four decimal places.
+	\item Plot the simulated closed-loop trajectory of this controller with the trajectories of the finite-horizon controller. What happens as 
+	you increase $N$?
+	\item Explain this observation based on the recursion relation used earlier and 
+	the discrete-time algebraic Riccati equation (DARE).
+\end{itemize}
+\end{assignment}
+
+\begin{equation}
+	K_\infty = \begin{bmatrix}
+			1.28645067 & 2.31256493
+	\end{bmatrix}
+\end{equation}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/assignment1/cl_traj_comparison.png}
+	\caption{Closed loop trajectories of MPC controllers}
+	\label{fig:cl_traj_comp}
+\end{figure}
+
+Figure \ref{fig:cl_traj_comp} shows that increasing the prediction horizon $N$, makes the trajectory converge towards the infinite horizon trajectory (drawn in black). \\ \\
+At each time step in MPC $K_N$ is used to calculate the input, the sequence $K_N$ convergence towards $K_\infty$ so therefore it logically the closed-loop trajectories will converge as well. \\
+
+
+
+\begin{assignment}
+	Numerically compare the quality of the finite-horizon LQR controller to the infinite horizon controller. 
+	For the same fixed $x_0$ as before and for $N$ ranging from 1 to 10\footnote{\textbf{Hint:} manually set the $y$-limit of the plot to $[0, 2000]$. Otherwise, the costs of unstable controllers will dominate the figure.}: 
+\begin{itemize}
+	\item Plot $V_{N} = x_0^\top P_N x_0$ versus $N$
+	\item Plot $V_{\infty} = x_0^\top P_{\infty} x_0$ on the same axis (this is just a horizontal line).
+	\item Approximate the infinite horizon cost for the finite-horizon controller using a long state and input trajectory:
+		\begin{align} \nonumber
+			\hat{V}_{N} = \sum_{k=0}^\infty(x_k^\top Q x_k + x_k^\top K^\top R K x_k) \approx \sum_{k=0}^{100}(x_k^\top Q x_k + x_k^\top K^\top R K x_k). 
+		\end{align}
+	and add a plot of $\hat{V}_N$ vs. $N$ on the same figure.
+	\item Describe what you observe: Do you observe convergence? Which quantities observe to which and in what direction? \textbf{Briefly} explain these observations.
+\end{itemize}
+\end{assignment}
+Figure \ref{fig:appr_cost} shows that the approximation of the sum bounds from above while the other estimation bounds from below. Both quantities converge towards the infinite horizon cost which is $V_\infty = 1006.40329$.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/assignment1/plot_VNvsN.png}
+	\caption{Approximation of infinite horizon cost}
+	\label{fig:appr_cost}
+\end{figure}
+
+
+\newpage
+\section{Linear MPC and convex optimization}
+\textbf{See the session 2 sheet for the set-up.}
+
+The goal of this assignment is to look more closely at what goes wrong in the 
+final exercise of the session, and to gain some intuition about ways to fix it.
+In essence, the problem that occurs is a symptom of the myopic nature of MPC,
+that is, it can only take into account what happens in the very near future.
+To rectify this, we have to provide it with information about the long-term
+behavior of the system under the applied controls.
+
+\textbf{Remark.} The assignments in this session should be performed in discrete time.
+
+\begin{assignment}
+	Consider the vehicle at a fixed position and velocity $(p_0, v_0)$.
+	Suppose we apply the maximum brake, i.e., $u_t = u_{\min}$ for $t = 0, \dots, T$.
+	Write an expression of $T$ as a function of $v_0$, such the vehicle can come to standstill in $T$ steps.
+\end{assignment}
+
+Since the change in velocity each timestep is $T_s u_{\min}$ the minimal timestep to stationarity is:
+\begin{equation}
+    T = \left\lceil \frac{-v_0}{T_s u_{\min}} \right\rceil
+\end{equation}
+
+
+\begin{assignment}
+	For a given $T$, compute the total braking distance, i.e., the distance travelled during the 
+	deceleration: $p_T - p_0$. 
+\end{assignment}
+
+\begin{equation}
+	p_{k+1} = p_k + T_s v_k
+\end{equation}
+\begin{equation}
+    \Delta p_{k+1} = T_s v_k
+\end{equation}
+We calculate distance travelled as $d=p_T - p_0$ as the sum of the position increments during the timesteps until a stationary velocity is reached:
+\begin{align}
+    d &= \sum_{k=0}^{T} \Delta p_{k+1} 
+       = \sum_{k=0}^{T} T_s v_k
+       = T_s \sum_{k=0}^{T} \left(v_0 + k\, T_s u_{\min}\right), \\[6pt]
+    d &= T_s v_0\, T 
+         + T_s^2 u_{\min} \sum_{k=0}^{T} k 
+         = T\, v_0 T_s+ u_{\min} T_s^2 \left(\frac{T+1}{2} \right).
+\end{align}
+
+\begin{assignment}\label{ex:sess2-constraint}
+   Use the result of the previous exercises to formulate a constraint on a state $x = (p, v)$ that 
+   will guarantee that there will always exist a control input that will keep future states 
+   in the set $S = \{x \mid p \leq p_{\max}\}$.
+\end{assignment}
+
+The breaking distance given initial velocity $v_0$ should be lower than the distance to the wall to prevent a crash.
+\begin{equation}
+	d(v_0) \leq p_{\max} - p_0
+\end{equation}
+
+\begin{assignment} \label{ex:extra-1}
+	Write a function that takes the horizon $N$ as an input and that 
+	for all initial states $[-10, 0] \leq x_0 \leq [1, 25]$ (sampled in a grid), checks whether your MPC controller is feasible at this initial state.
+	Set $u_{\min} = -5$.
+	Leave the other settings at the same values as the ones in the session.
+	For all $N \in \{2, 5, 10\}$, make a plot showing the set of states that are feasible (this can be a simple scatter plot), 
+	and draw the boundary of the constraint you derived in \cref{ex:sess2-constraint}. 
+	\textbf{Remark.} You only have to check the initial feasibility of the MPC problem, not recursive feasibility.
+\end{assignment}
+
+
+\newpage
+\section{MPC theory: terminal ingredients}
+During the sessions, we have computed polyhedral invariant sets to use 
+for the terminal ingredients in our MPC controller. 
+Alternatively, we can use ellipsoidal sets. 
+The goal of this assignment is to compute such sets in a few different ways 
+and compare them with the invariant sets we've computed during 
+the session.
+
+\begin{assignment} \label{sess3:assign-lqr}
+	Let $K, P$ denote the optimal, infinite-horizon LQR gain and the solution of 
+	the discrete-time Riccati equation, respectively. As shown in the lectures, 
+	any level set
+	\[ 
+		\lev_{\alpha} V_{\infty} = \{x \mid V_{\infty}(x) = x^\top P x \leq \alpha\}
+	\]
+	is a positive invariant set for the system under the policy $u = Kx$. However, 
+	not all states $x \in \lev_{\alpha} V_{\infty}$ necessarily satisfy the state and input constraints. 
+
+	Write down the expression for the largest value of $\alpha$ 
+	such that
+	\[ 
+	\begin{cases}
+		x \in X \\
+		Kx \in U  
+	\end{cases} \quad \forall x \in \lev_{\alpha} V_{\infty},
+	\]
+	where $X = \{x \in \R^n \mid H_x x \leq h_x\}$ and $U = \{u \in \R^m \mid H_u u \leq h_u \}$ are 
+	the (polyhedral) sets of feasible states and inputs, respectively.
+
+	\textbf{Hint.} The notion of a support function might be of use.
+\end{assignment}
+
+
+
+\begin{assignment}
+	Plot the ellipsoidal set 
+	(You can use the given \texttt{Ellipsoid} class we provide,
+	together with the function \texttt{visualization.plot\_ellipsoid} for this)
+	together with the polyhedral set $\{ x \in \R^n \mid x \in X,\; Kx \in U \}$.
+	Is the obtained ellipsoidal set a valid terminal set for the MPC problem?
+\end{assignment}
+
+
+Alternatively, we can more directly encode the requirements for the 
+invariant set and solve a convex optimization problem 
+to find it. 
+
+Let $E = \{ x \in \R^n \mid x^\top P x \leq 1 \}$ denote our candidate set, where 
+now $P$ is the positive definite shape matrix. 
+Let $K \in \R^{m \times n}$ furthermore be a candidate state feedback gain.
+Our goal is to determine 
+$P$ and $K$ to obtain the ``largest'' possible positive invariant set for 
+$x_{t+1} = A x_t + B u_t$ under the policy $u_t = K x_t$.
+
+
+\begin{assignment}
+	Formulate a constraint on $P$ and $K$ that guarantees that 
+	\[ 
+		x^\top P x \leq 1 \implies x^\top(A + BK)^\top P (A + BK)x \leq 1  \quad \forall x \in \R
+	\]
+\end{assignment}
+
+
+
+\begin{assignment}\label{sess3:c1}
+	Show that the previous constraint can be written as the linear matrix inequality (LMI)
+	\[ 
+		\begin{bmatrix}
+			S & (AS + BF)^\top \\ 
+			AS + BF & S
+		\end{bmatrix} \geq 0
+	\]
+	\textbf{Hint.} Doing this involves the following steps. 
+	\begin{enumerate}
+		\item multiply the inequality you obtained from the left and the right by $P^{-1}$
+		\item Introduce the change of variables
+			\begin{itemize}
+			\item $S=P^{-1}$
+			\item $F=KS$
+			\end{itemize}
+		\item Apply the \href{https://inst.eecs.berkeley.edu/~ee127/sp21/livebook/thm_schur_compl.html}{Schur complement lemma}.
+	\end{enumerate}
+\end{assignment}
+
+
+
+\begin{assignment}\label{sess3:c2}
+	Recall from the lectures that 
+	\[ 
+		E \subseteq \{x \in \R^n \mid Hx \leq g \} \iff \sigma_{E}(H_{i}) \leq g_i, \,\forall i = 1, \dots, p,
+	\]
+	where $\sigma_E$ denotes the support function of the ellipsoid $E$ and $H_i$ the $i$th row of $H$. 
+	Use this fact to show that all states in our candidate invariant set $E$ satisfy the state constraints if and only if 
+	\[ 
+		H_{x,i}^\top S H_{x,i} \leq h_{x,i}^2, \quad i = 1, \dots, m_x,
+	\]
+	with $H_{x,i}$ the $i$th row of $H_x$ and $h_{x,i}$ the $i$th coordinate of $h_x$ (see \cref{sess3:assign-lqr})
+	and $S = P^{-1}$ as before.
+
+	\textbf{Hint.} An expression for the support function of an Ellipsoid is given in the 
+	slides. (It's also a useful exercise to derive it yourself from the definition, but this is not part of the assignment) 
+\end{assignment}
+
+
+\begin{assignment}\label{sess3:c3}
+	Similarly, show that $u = Kx$ satisfies the input constraints for all $x \in E$, 
+	if and only if 
+	\[ 
+		h_{u,i}^2 - H_{u,i}^\top F P F^\top H_{u,i} \geq 0, \quad \forall i = 1, \dots, m_{u}.
+	\]
+	Use the Schur complement lemma to write this constraint as an LMI in $F$ and $S$.
+\end{assignment}
+
+\begin{assignment}
+	Since the volume of the ellipsoid is proportional to $\log \det P^{-1}$, we can now 
+	compute the largest (in terms of volume) invariant set by maximizing $\log \det S$ subject 
+	to the constraints in \cref{sess3:c1,sess3:c2,sess3:c3}. 
+	
+	Implement this problem using \texttt{cvxpy} and plot the resulting ellipsoid (using the given utility code as before) together with the new polyhedral set $\{ x \in \R^n \mid x \in X,\; FS^{-1}x \in U \}$.
+\end{assignment}
+
+
+
+
+\newpage
+\section{Nonlinear MPC}
+
+We revisit the autonomous parking task but in a slightly more challenging situation. 
+Suppose that there is a vehicle in the adjacent parking spot. 
+
+\begin{figure}[ht!]
+    \centering 
+    \begin{tikzpicture}
+        \tikzset{point/.style={circle, fill, inner sep=1pt}}
+        \newlength{\pwid}
+        \setlength{\pwid}{1cm}
+        \newlength{\phei}
+        \setlength{\phei}{0.48cm}
+        \newlength{\cw}  % Car width 
+        \newlength{\ch}  % Car height 
+        \setlength{\cw}{0.8cm}
+        \setlength{\ch}{0.4cm}
+        
+        \fill[gray!80!cyan] (-4\pwid, 1.5\phei) rectangle (4\pwid, -3\phei);
+        \fill[black!70!cyan] (-4\pwid, 0.5\phei) rectangle (4\pwid, -3\phei); 
+        \foreach\i in {-2,-1,...,2}{
+            \begin{scope}[xshift=\i\pwid]
+            \draw[very thick, white] (-0.5\pwid, -0.5\phei) rectangle (0.5\pwid, 0.5\phei);
+            \end{scope}
+        }
+        \colorlet{carcol}{blue!50!cyan}
+		\colorlet{obstaclecol}{red!80!black}
+        \node[point, label=left:{\color{cyan}\textbf{Goal}}, color=cyan] {};
+        \fill[carcol, rounded corners] (1.3\pwid-0.5\cw, -1.2\phei-0.5\ch) rectangle ++(\cw,\ch) coordinate[midway] (carcenter);
+        \draw[->, >=stealth, thick, carcol] ($(carcenter)-(0.5\cw,0)$) to[in=0,out=180] (0,0); 
+        \node[text=white] at (carcenter){car};
+		
+		\fill[obstaclecol, rounded corners] (1\pwid-0.5\cw, -0.5\ch) rectangle ++(\cw,\ch) coordinate[midway] (obscenter);
+		\node[text=white] at (obscenter){obs};
+
+    \end{tikzpicture}
+    \caption{Autonomous parking task with obstacle}
+    \label{fig:task}
+\end{figure}
+
+Naturally, the vehicle can in no circumstance be allowed to collide with the stationary obstacle. 
+The goal of this assignment is to modify the MPC formulation from the exercise session to include collision avoidance constraints. 
+
+One way of formulating the collision avoidance constraint is to cover each vehicle with a single row of circles as illustrated in  
+\cref{fig:circles}. 
+Here, $d$ denotes the horizontal distance between the center of each 
+circle and its intersection with the rectangle, $r$ denotes the 
+radius of the circles, $l$ is the length of the vehicle and $w$ is the width of the vehicle.
+
+\begin{figure}[ht!]
+	\centering
+	\foreach \i in {2,3,5}{
+	\begin{minipage}{0.3\textwidth}
+	   \includegraphics[width=\textwidth]{figures/covering_circles\i.pdf}
+	\end{minipage}
+	}
+	\caption{Vehicle covering with 2, 3 and 5 circles respectively.}
+	\label{fig:circles}
+\end{figure}
+
+
+\newcommand{\nc}{n_{\mathrm{c}}}
+\begin{assignment}
+	Let $\nc$ denote the number of circles used to cover the vehicle. 
+	Based on the figure, derive an expression 
+	for the \textbf{centers} $c_i \in \R^2$, $i = 0, \dots, \nc-1$ 
+	and the radius $r \in \R_+$ of the circles
+	as a function of $l$, $w$ and $\nc$. 
+	Assume that the origin lies in the center of the vehicle (i.e., the rectangle).
+	
+	Consider a vehicle of $l=4$ and $w=2$, and take $\nc=3$. 
+	To verify your results, use \texttt{Circle} and \texttt{Rectangle} from \texttt{matplotlib.patches} 
+	to plot it for this example.
+
+	\textbf{Hint:} This task involves only basic geometry.
+\end{assignment}
+
+
+\begin{assignment}
+	Given that the current vehicle state is $x = (p_x, p_y, \psi, v)$, 
+	express the center $\bar{c}$ of a circle in global coordinates, given that its local coordinates 
+	(aligned with the vehicle, as in the previous exercise) are given by $c$.
+
+	For a vehicle of length $l = 4$, width $w = 2$, with its center at $p = (2,2)$
+	and heading angle $\psi = \tfrac{\pi}{4}$, use your result (combined with the previous assignment) to plot the 
+	covering circles on this vehicle for $\nc = 3$.
+
+	\textbf{Hint:} You can write your result in terms of the rotation matrix $R(\psi)$ defined by 
+	the heading angle $\psi$. There is no need to work out everything into individual components.
+\end{assignment}
+
+
+\begin{assignment}
+	Given that the controlled vehicle is covered by circles with 
+	centers $\bar{c}_i$ $i = 0, \dots, \nc-1$ (expressed in global coordinates) and
+	radius $r$, and similarly the obstacle vehicle is covered by circles 
+	with centers $\bar{c}_i'$ and radius $r'$. 
+	Formulate a set of \textit{smooth} constraints 
+	\[ 
+		g(\bar{c}_i, \bar{c}_j) \leq 0
+	\]
+	on $\bar{c}_i$ and $\bar{c}_j'$, $i,j \in 0, \dots, \nc-1$.
+	which -- when satisfied -- guarantees that the intersection between 
+	the two vehicle rectangles is empty.
+
+	Additionally, show whether this set of constraints is convex or not.
+
+	\textbf{Hint:} Squaring can get rid of isolated points of non-smoothness.
+\end{assignment}
+
+
+\begin{assignment}
+	Implement the constraint you derived into your MPC controller formulation.
+	That is, enforce that 
+	\[
+		g(\bar{c}_i(x_t), \bar{c}_j') \leq 0, \quad \forall i,j \in \{0, \dots, \nc-1\}, \forall t \in 1, \dots, N. 
+	\]
+	where $\bar{c}_{i}(x_t)$ is the center (in global coordinates) of the $i$'th circle on the 
+	controlled vehicle expressed as a function of its state at time step $t$,
+	$\bar{c}_j'$ is the center (in global coordinates) of the $j$'th circle 
+	on the obstacle vehicle and $g$ is the function you derived in the previous 
+	exercise.
+
+	Using the following settings, Simulate your MPC controller for 100 time steps in closed loop.
+	You can use the MPC model dynamics for the simulation (no model mismatch):
+	
+	\begin{center}
+	\begin{tabular}{cc}
+		\toprule
+		$x_0$ & $(0.3, -0.1, 0, 0)$ \\
+		$N$   & 30 \\ 
+		$\Ts$ & 0.08 \\ 
+		Obstacle pos. & $(0.25, 0)$ (heading 0)\\
+		\bottomrule
+	\end{tabular}
+	\end{center}
+	
+	Use \texttt{plot\_state\_trajectory} from \texttt{given.plotting} to 
+	visualize the state trajectory, including the obstacle (simply pass the function a list with only one state, since it is stationary).
+	Is the trajectory collision-free? 
+	Does the car converge to a point that is entirely within the parking spot
+	\footnote{
+	defined in the code as a rectangle with dimensions \texttt{PARK\_DIMS=}$(0.25, 0.12)$
+	}?
+
+	Optionally, you can also generate an animation using \texttt{given.animation}, but this is 
+	not a deliverable.
+	(see the solution of the exercise session for some example code. You can use the argument \texttt{obstacle\_positions} to visualize the obstacle.)
+
+\end{assignment}
+
+		
+
+\begin{assignment}
+	Play around with the tuning of $Q$, $R$, $N$ or other controller parameters (perhaps even $\nc$, feel free to get creative)
+	to obtain a controller which can (without collision) park the vehicle such that it is fully enclosed in the 
+	parking spot. Briefly describe your reasoning while tuning, 
+	report the final parameters that you changed from the provided defaults
+	and illustrate the final result with a plot of the trajectory.
+\end{assignment}
+
+
+\begin{assignment}
+	Measure your solver time. A quick and easy way to do this is to invoke \texttt{perf\_counter} 
+	from the \texttt{time} module before and after your solver call, within the \texttt{\_\_call\_\_} 
+	method of your controller. In general, if a solver returns its own time, its usually better to use this instead of measuring the time yourself, in order 
+	not to account for overhead in the modeling language. For this assignment, however, you can just use your own timing.
+	You can log the solver time by 
+	creating a log class 
+	\begin{lstlisting}[style=python]
+from dataclasses import dataclass
+from rcracers.simulator.core import BaseControllerLog, list_field
+@dataclass
+class ControllerLog(BaseControllerLog): 
+    solver_time: list = list_field()
+	\end{lstlisting}
+	and passing it as \texttt{log} to the \texttt{simulate} method:
+	\begin{lstlisting}[style=python]
+from rcracers.simulator import simulate
+log = ControllerLog()   # Initialize an empty log 
+x = simulate(..., log=log) # Simulate 
+print(log.solver_time)  # Now the solver times have been written 
+	\end{lstlisting}
+	Within your solver call, you can then log it like this:
+	\begin{lstlisting}[style=python]
+from time import perf_counter
+def __call__(self, y, log) -> np.ndarray:
+	start = perf_counter()
+	solution = self.solve(y)
+	stop = perf_counter()
+	u = self.reshape_input(solution)
+	log("solver_time", stop-start)
+	return u[0]
+	\end{lstlisting}
+	Visualize the resulting solver time. Is your MPC controller real-time capable? How did you verify this? If it isn't, finetune your controller to 
+	obtain one that is real-time capable and still successfully parks into the parking area.
+	Report your final tuning (any value that you changed from the provided defaults)
+	and show the timings and state trajectory of the final controller.
+\end{assignment}
+
+
+\newpage
+\section{State estimation}
+The goal of this assignment is to further improve the MHE you developed in the 
+associated exercise session. Specifically right now we only use the data 
+provided within the horizon of the MHE optimization problem. Instead 
+we would like to use past information as well, which we can do using priors. 
+\begin{assignment}
+ 	We will implement a prior update. Since you already 
+    have the EKF iterates available, these can be used to add the \emph{filtering prior update}
+    as described in the slides:
+    \begin{equation*}
+        \Gamma_{T-N}(z) = \frac{1}{2} \nrm{z - \hat{x}_{T-N}}_{(P^-_{T-N})^{-1}}.
+    \end{equation*}
+    \begin{enumerate}
+        \item Note that the \texttt{prior} can already be passed to the provided \texttt{build\_mhe} method:
+        \begin{lstlisting}[style=python]
+fs, hs = get_system_equations(symbolic=True, noise=True)
+loss = lambda w, v: w.T @ w + v.T @ v
+solver = build_mhe(loss, f, h, 10, lbx=0.0, ubx=10.0, use_prior=True)
+
+# you can solve the optimization problem as follows:
+x, w = solver(P=np.eye(3), x0=np.zeros(3), y=np.zeros((10, 1)))
+\end{lstlisting}
+        
+        \item Alter your \texttt{MHE} class to use \texttt{EKF} internally. Initialize your 
+        \texttt{EKF} with the same values as during the exercise session. 
+        Keep in mind that you should produce $\hat{x}_{T-N}$ using only measurements 
+        available before time step $T-N$ and the same is true for $P^-_{T-N}$. 
+        How many past estimates $\hat{x}_{T-N}$ and $P^-_{T-N}$ should you store 
+        internally?
+
+        \item Verify, both for longer horizons ($N = 25$) and shorted ($N=10$) ones
+        that the filtering prior improves the behavior. Plot the estimated 
+		trajectories.
+        
+        \item Does clipping the state estimates in the \emph{EKF} aid the 
+        performance? Plot the result.
+    \end{enumerate}
+    \solution{See \texttt{MHE} in \texttt{session4\_sol.py}.} 
+\end{assignment}
+
+
+
+\newpage 
+\section{Optimization}
+
+The goal of this assignment is to get familiar with methods for solving nonlinear MPC problems. 
+Due to the nonlinearity of the dynamics, the OCP
+will be nonconvex and therefore, the methods from during the session will no longer be applicable. 
+
+The given code (\texttt{problem.py}), 
+defines a few test problems and some data-structures that 
+you can use to build your nonlinear solver. Have a brief 
+look at this file, and read the comments therein
+to get acquainted with the provided ingredients.
+You will not be required to make any changes 
+in this file.  
+
+A scaffolding for your own implementation is given 
+in \texttt{template.py}. Throughout this 
+assignment, you will fill in the blanks in this file, 
+to finally obtain a solver for nonlinear optimal control problems.
+
+\subsection{Building the solver}
+We will build a Newton-Lagrange method 
+for multiple shooting (i.e., simultaneous approach).
+
+\begin{assignment}
+	Implement the Newton-Lagrange method (SQP) by 
+	completing the auxiliary functions used by \texttt{newton\_lagrange} in 
+	the provided template. Particularly, 
+	the functions \texttt{lqr\_factor\_step}, \texttt{lqr\_solve\_step}
+	and \texttt{update\_iterate} need to be implemented. The former two functions should implement 
+	Algorithms 2 and 3 in the related lecture slides. 
+	In \texttt{update\_iterate}, you can for now assume that the option \texttt{linesearch} is \texttt{False}.
+
+	Run the function \texttt{test\_linear\_system} and present the output.
+	This function calls your SQP solver on a problem involving 
+	a linear system. Is the output what you expect? Why?
+\end{assignment}
+\begin{lstlisting}[style=python]
+	<Paste the output of the program here.>
+\end{lstlisting}
+
+
+\subsection{Nonlinear test case}
+Now that you have tested your implementation on a linear system,
+we will move on to a nonlinear example.
+
+Consider the continuous time dynamics 
+\[
+\begin{aligned}
+  \dot{x}_1 &=  10(x_2 - x_1) \\
+  \dot{x}_2 &= x_1(u - x_3) - x_2 \\
+  \dot{x}_3 &= x_1x_2 - 3x_3 
+\end{aligned}
+.\] 
+which are discretized using the foward Euler scheme. 
+This system is already implemented in \texttt{problem.py} under \texttt{ToyDynamics}. 
+The problem that you can pass to your SQP solver is described by \texttt{ToyProblem}.
+
+\begin{assignment} \label{assgn:62}
+	Construct an initial guess of all zeros for the inputs, the states and the costates.
+	However, for the states, keep in mind that the first entry must be the provided initial 
+	state, i.e., \texttt{problem.x0}. Run your solver with this 
+	initial state. Give the cost and constraint violation of the last iterate
+	(printed automatically using the \texttt{Logger} class in \texttt{given.problem}). 
+	Use the provided \texttt{animate\_iterates} function to animate the states and inputs over the iterates and to export a 
+	figure of the final solution. Add this plot in your report. Does your solution look plausible?
+\end{assignment}
+
+
+\begin{assignment} \label{assgn:simulate-init}
+   Simulate the system and use this as an initial guess.
+
+   You may find that the solver now fails to converge. 
+   Why do you think this happens? 
+   
+   \textbf{Hint.} Plot the state trajectory you used as an initial guess. 
+   Does it look like the solution you just obtained in the previous exercise? 
+   Why is this important?
+\end{assignment}
+
+
+
+\subsection{Adding Line Search}
+
+\begin{assignment}
+   Implement line search and the experiment of \cref{assgn:simulate-init}. 
+   Use 
+	\[ 
+		\phi(z) = J_N(z) + c \nrm{h(z)}_1 
+	\]
+	as a merit function (see \texttt{problem.build\_cost\_and\_constraint}). 
+
+	\textbf{Hint.} Make sure to set \texttt{linesearch=True} in the \texttt{cfg} argument of the solver, 
+	which is expected to be an instance of \texttt{NewtonLagrangeCfg}.
+	
+   Now does it converge? Give the output of the method at the final iterate and use this 
+   to argue that your method indeed converged to something meaningful. 
+   Do you notice any difference with respect to the solution in \cref{assgn:62}? 
+   How do you explain this?
+\end{assignment}
+
+
+
+
+\begin{assignment}
+   Run it on the parking example. Use initial condition all zeros (except $x_0 = $\texttt{problem.x0}).
+   
+	Does it converge? Why? 
+	
+	\textbf{Hint. } During the Newton-Lagrange iterations, check whether the Hessian of the QP cost is positive definite.
+\end{assignment}
+
+
+
+\subsection{Adding Regularization}
+
+\begin{assignment}
+	Implement regularization in the function \texttt{regularize}. This method should 
+	check whether the QP is convex. 
+	If not, it should add $\lambda I$ to the Hessian $\overline{Q}$ of the cost function, where $\lambda$ is 
+	(approximately) the smallest constant such that $\overline{Q} + \lambda I$ is positive definite.
+	To do so set $\lambda = 10^{-6}$ and double it every time the result is not positive definite. 
+	
+	With this modification, run the method again on the Parking problem. Does it converge? 
+	\textbf{Hint.}  Make sure to set \texttt{cfg.regularize} to \texttt{True}!
+\end{assignment}
+
+
+ 
+
+
+\end{document}
+

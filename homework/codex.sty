@@ -1,0 +1,92 @@
+\ProvidesPackage{codex}[2021/06/14 Code highlighting]
+
+\RequirePackage[strict]{changepage}
+\RequirePackage{listings}
+\RequirePackage{textcomp}
+
+\definecolor{CommentGreen}{rgb}{0.0,0.4,0.0}
+\colorlet{Background}{gray!10}
+\colorlet{StringColor}{purple}
+\colorlet{KeywordColor}{blue}
+
+% source for copyable lstlisting
+% tex.stackexchange.com/questions/19949
+% tex.stackexchange.com/a/51625
+
+\makeatletter
+\newcommand*\verbfont{%
+    \normalfont\ttfamily\hyphenchar\font\m@ne\@noligs}
+\makeatother
+
+\lstdefinestyle{copyable}{%
+  % frame
+  frame=tlbr,%
+  framesep=5pt,%
+  framerule=0pt,%
+  backgroundcolor=\color{Background},%   % color background green
+  % font styles
+  basicstyle=\verbfont\footnotesize\selectfont,%    % footnotesize (fits 80 characters)
+  identifierstyle=,%
+  stringstyle=\color{StringColor},%
+  commentstyle=\usefont{T1}{pcr}{m}{sl}\color{CommentGreen}\footnotesize,%
+  keywordstyle=[1]\color{blue}\bfseries,%
+  keywordstyle=[2]\color{purple},%
+  keywordstyle=[3]\color{cyan}\bfseries,%
+  morecomment=[l][\color{blue}]{...},%
+  % getting correct characters
+  columns=flexible,%                 % avoids adding strange spaces
+  keepspaces=true,%                      % keeps spaces at start of line
+  showstringspaces=false,%               % avoids replacing spaces by strange characters
+  upquote=true,%                         % better quotes
+  extendedchars=false,%                  % no special characters allowed
+  tabsize=4,%                             % 4 spaces per tab
+  literate=*{-}{-}1,
+}
+
+\lstdefinestyle{bash}{%
+  language=bash,%
+  style=copyable,%
+  literate={-}{-}1,%
+  morekeywords={git,source,g++,gcc}%
+}%
+
+\lstdefinestyle{generic}{%
+  style=copyable,%
+  breaklines=true,%
+}
+
+\lstloadlanguages{Matlab}
+\lstdefinestyle{matlab}{%
+  language=Matlab,%
+  style=copyable,%
+  morekeywords={properties,methods,classdef},%
+  morekeywords=[2]{handle}%
+}
+
+\lstdefinestyle{c}{%
+  language=c,%
+  style=copyable%
+}
+
+\lstdefinestyle{c++}{
+  language=c,%
+  style=copyable%
+}
+
+\lstdefinestyle{verilog}{%
+  language=Verilog,%
+  style=copyable%
+}
+
+\lstdefinestyle{python}{%
+  language=Python,%
+  style=copyable%
+}
+
+\lstdefinestyle{latex}{%
+  language=[LaTeX]{TeX},%
+  style=copyable,%
+  morekeywords=[3]{Cref}%
+}
+
+\def\lst@outputspace{{\ifx\lst@bkgcolor\empty\color{Background}\else\lst@bkgcolor\fi\lst@visiblespace}}

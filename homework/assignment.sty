@@ -1,0 +1,224 @@
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{wrapfig}
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+\usepackage{easybmat}
+%% Useful packages
+\usepackage{listings}
+
+\usepackage{amsthm}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{float} 
+% \usepackage{hyperref}
+\usepackage{appendix}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{cleveref}
+\usepackage{subcaption}
+\newcommand{\ve}[1]{\boldsymbol{#1}}
+\setcounter{MaxMatrixCols}{20}
+\interfootnotelinepenalty=10000
+\usepackage{microtype}
+\usepackage{xargs}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\usepackage[]{tcolorbox}
+\tcbuselibrary{skins}
+\tcbuselibrary{breakable}
+
+\newcommand{\todo}[1]{{\footnotesize\color{red}#1}}
+
+% ================================================
+%  DOCUMENT METADATA 
+% ================================================
+
+\author{\texttt{mathijs.schuurmans@kuleuven.be}\\\texttt{leander.hemelhof@kuleuven.be}}
+\date{2025--2026}
+
+
+% ================================================
+%  BLOCK ENVIRONMENTS 
+% ================================================
+% #1 color 
+% #2 title 
+\newcommand{\frmtitle}[2][black]{%
+  \tikz[baseline=(current bounding box.east),outer sep=0pt]%
+\node[anchor=east,rectangle, rounded corners, text=white, fill=#1!70]{\strut #2};
+}
+
+\usepackage[framemethod=TikZ]{mdframed}
+
+% #1: color 
+% #2: boxname
+% #3: title
+% #4: background fill [%]
+\newcommand\definebox[4]{
+  % \newmdenv[fontcolor=#1!20!black,
+  %         frametitle={\frmtitle[#1]{#3}},
+  %         linewidth=1.1pt,
+  %         roundcorner=2pt,
+  %         innertopmargin=5pt,
+  %         linecolor=#1!20!white,%
+  %         topline=true,%
+  %         frametitleaboveskip=\dimexpr-\ht\strutbox\relax,%
+  %         backgroundcolor=#1!#4!white
+  %         ]{#2}
+  % \newtcolorbox{inner@#2}[3][]{
+  %   hbox boxed title,
+  %   enhanced,
+  %   breakable=true,
+  %   % sharp corners=all,
+  %   top=4mm, left=4mm,
+  %   before=\vspace{1em},
+  %   borderline={1.1pt}{0pt}{#1!20!white},
+  %   attach boxed title to top left={yshift=-1ex,xshift=12ex},
+  %   boxed title style={boxrule=1.1pt, colframe=#1!70, colback=#1!70},
+  %   coltitle=white, colback=#1!#4!white,
+  %   fonttitle=\bfseries,
+  %   title=#3
+  % }
+  \newtcolorbox{inner@#2}[1]{
+    hbox boxed title,
+    enhanced,
+    breakable=true,
+    before=\vspace{1em},
+    top=4mm, left=4mm,
+    colframe=#1!20!white,
+    attach boxed title to top left={yshift=-3mm,yshifttext=-1mm, xshift=5mm},
+    boxed title style={size=title,boxrule=1.1pt, colframe=#1!70, colback=#1!70, sharp corners=all},
+    fonttitle=\bfseries,
+    coltitle=white, colback=#1!#4!white,
+    title={#3}
+  }
+  \newenvironment{#2}{\begin{inner@#2}{}{}}{\end{inner@#2}}
+}
+
+% ------------------------------------------------
+% Homework Assigments 
+% ------------------------------------------------
+% Assignment box
+\definebox{black}{questionbox}{Assigment~\thesection.\theassignment}{0}
+
+\newcounter{assignment}[section]
+\newenvironment{assignment}{%
+    \refstepcounter{assignment}%
+    \begin{questionbox}
+}{%
+\end{questionbox}
+}
+\crefname{assignment}{Assigment}{Assigments}
+
+\definebox{black!70!blue}{deliverables}{Deliverables}{10}
+
+% ------------------------------------------------
+% exercise sessions 
+% ------------------------------------------------
+\colorlet{ferngreen}{black!50!green!80!yellow}
+% solution box 
+\definebox{ferngreen}{solutionbox}{Solution}{5}
+
+% Warning box 
+\definebox{orange!50!black}{warningbox}{Warning}{5}
+% ----------------------------------------------------------
+
+% Environment for exercises 
+% ---------------------------
+
+\newcounter{excount}
+\crefname{excount}{Exercise}{Exercises}
+
+\newenvironment{exercise}{\refstepcounter{excount}
+\par\medskip
+\noindent \textbf{Exercise~\theexcount} | \rmfamily}{\medskip}
+\crefname{excount}{Exercise}{Exercises}
+
+% Environment for code snippets 
+% ---------------------------
+
+\newcounter{sncount}
+\crefname{sncount}{Code}{Code}
+
+\newenvironment{snippet}{\refstepcounter{sncount}
+\par\medskip
+\noindent \textbf{Code~\thesncount} | \rmfamily}{\medskip}
+\crefname{sncount}{Code}{Code}
+
+% Toggle solutions 
+\newif\ifshowsolution
+
+\newcommand{\solution}[1]{
+\ifshowsolution
+  \begin{solutionbox}
+    #1
+  \end{solutionbox}
+\fi
+}
+\newcommand{\warning}[1]{
+\ifshowsolution
+  \begin{warningbox}
+    #1
+  \end{warningbox}
+\fi}
+
+
+% ================================================
+% TIKZ externalization
+% ================================================
+\usetikzlibrary{external}
+\tikzexternalize[prefix=pics/] % activate and define figures/ as cache folder
+\newcommand{\inputtikz}[1]{%
+  \tikzsetnextfilename{#1}%
+  \input{tikz/#1.tex}%
+}
+\tikzexternaldisable
+% ================================================
+% NOTATION 
+% ================================================
+
+\newcommand{\h}{d}
+\newcommand{\pt}{p_{\mathrm{f}}}
+\newcommand{\pe}{p_{\mathrm{r}}}
+\newcommand{\vt}{v_{\mathrm{f}}}
+\newcommand{\veg}{v_{\mathrm{r}}}
+\newcommand{\Ts}{T_{\mathrm{s}}}
+\DeclareMathOperator{\T}{T}
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\tr}{tr}
+\newcommand{\E}{\mathbb{E}}
+
+
+\newcommand{\X}{X}
+\newcommand{\U}{U}
+\newcommand{\Z}{Z}
+
+\newcommand{\smallmat}[1]{\left[\begin{smallmatrix}#1\end{smallmatrix}\right]}
+\newcommand{\nrm}[1]{\left\|#1\right\|}
+\DeclareMathOperator{\maximize}{maximize}
+
+\DeclareMathOperator{\lev}{lev}
+\usepackage{pxfonts}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\dif}{\mathrm{d}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\casadi}{\text{CasADi}}
+\newcommand{\matlab}{\text{MATLAB}}
+\DeclareMathOperator{\pre}{pre}
+\newcommand{\LQR}{\mathrm{LQR}} 
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator{\stt}{s.t.}
+\DeclareMathOperator{\diag}{diag}
