@@ -189,8 +189,27 @@ the session.
 
 	\textbf{Hint.} The notion of a support function might be of use.
 \end{assignment}
+The section of both sets remains a polyhedral set.
+\begin{equation}
+	X_\kappa = \{x \in \mathbb{R}^n \mid H_x x \leq h_x; \quad H_u K x \leq h_u\}
+\end{equation}
 
+\begin{equation}
+	X_\kappa = \{x \in \mathbb{R}^n \mid H x \leq h\}
+\end{equation}
+With $H = \begin{bmatrix}
+	H_x \\
+	H_u Kx
+\end{bmatrix}$ and $g= \begin{bmatrix}
+	h_x \\
+	h_u
+\end{bmatrix}$. 
+The problem is a set inclusion problem by utilizing the support function for ellipsoids $\sigma_{\epsilon(\alpha)}(v)$ we can derive an expression.
 
+\begin{equation}
+	\alpha^* = \min\left\{\frac{g_i^2}{h_i^T P^{-1} h_i} \mid i = 1, \dots, d \right\}.
+\end{equation}
+With $h_i$ every row in linear matrix $H$ and $g_i$ values in $g$ of the combined set $X_\kappa$ .
 
 \begin{assignment}
 	Plot the ellipsoidal set 
@@ -199,8 +218,8 @@ the session.
 	together with the polyhedral set $\{ x \in \R^n \mid x \in X,\; Kx \in U \}$.
 	Is the obtained ellipsoidal set a valid terminal set for the MPC problem?
 \end{assignment}
-
-
+No the obtained ellipsoidal isn't a valid terminal set yet since it doesn't consider recursive feasibility but only one step.  
+\\ \\ 
 Alternatively, we can more directly encode the requirements for the 
 invariant set and solve a convex optimization problem 
 to find it. 
@@ -219,8 +238,14 @@ $x_{t+1} = A x_t + B u_t$ under the policy $u_t = K x_t$.
 		x^\top P x \leq 1 \implies x^\top(A + BK)^\top P (A + BK)x \leq 1  \quad \forall x \in \R
 	\]
 \end{assignment}
-
-
+We can write this implication in terms of a matrix inequality since it holds  $ \forall x \in \mathbb{R^n}$
+\begin{equation}
+	(A+BK)^T P (A+BK) \preceq P
+\end{equation}
+And thus:
+\begin{equation}
+	P-(A+BK)^T P (A+BK) \succeq 0 \qquad \text{(PSD)}
+\end{equation}
 
 \begin{assignment}\label{sess3:c1}
 	Show that the previous constraint can be written as the linear matrix inequality (LMI)

@@ -12,7 +12,7 @@ class Problem:
     p_max: float = 1.0  # Maximal position 
     v_min: float = -20  # Minimal velocity
     v_max: float = 25.0  # Maximal velocity
-    u_min: float = -5.0
+    u_min: float = -20.0
     u_max: float = 10.0
     N: int = 5
 

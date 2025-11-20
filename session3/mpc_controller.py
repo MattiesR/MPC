@@ -1,18 +1,15 @@
-import numpy as np
-from typing import Tuple , Callable
-import matplotlib.pyplot as plt
-import argparse
+from typing import Optional
+import casadi as cs 
 from given.problem import Problem
-
-import sys
-import os
-sys.path.append(os.path.split(__file__)[0])  # Allow relative imports
+from rcracers.utils.geometry import Polyhedron
+from rcracers.utils.lqr import LqrSolution
 from rcracers.utils import quadprog
-import cvxpy as cp
+import cvxpy as cp 
 
+import numpy as np
 
 # -----------------------------------------------------------
-# Helper functions
+# Helper functions (See also solution code of session 2.)
 # -----------------------------------------------------------
 
 def get_states(sol: quadprog.QuadProgSolution, problem: Problem) -> np.ndarray:
@@ -45,12 +42,16 @@ def get_inputs(sol: quadprog.QuadProgSolution, problem: Problem) -> np.ndarray:
     nu = problem.n_input
     return sol.x_opt[ns * (N + 1) :].reshape((-1, nu))
 
+
 class MPC:
     """Abstract baseclass for an MPC controller. 
     """
-    def __init__(self, problem: Problem):
-        self.problem = problem 
+    def __init__(self, problem: Problem, Xf: Optional[Polyhedron] = None, lqr_solution: Optional[LqrSolution] = None):
+        self.problem = problem
+        self.Xf = Xf
+        self.terminal_controller = lqr_solution
         print(" Building MPC problem")
+
         self.qp = self._build()
     
     def _build(self):
@@ -108,7 +109,7 @@ class MPCCvxpy(MPC):
         xmax = np.array([self.problem.p_max, self.problem.v_max])
         xmin = np.array([self.problem.p_min, self.problem.v_min])
 
-        #  -- Input constraints 
+        #  -- Input constraints
         umax = np.array([self.problem.u_max])
         umin = np.array([self.problem.u_min])
 
@@ -117,15 +118,32 @@ class MPCCvxpy(MPC):
         
         # Sum of stage costs 
         cost = cp.sum([cp.quad_form(xt, Q) + cp.quad_form(ut, R) for (xt, ut) in zip(x,u)])
-        cost = cost + cp.quad_form(x[-1], Q)  # Add terminal cost
 
         constraints = [ uk <= umax for uk in u ] + \
                       [ uk >= umin for uk in u ] + \
                       [ xk <= xmax for xk in x ] + \
                       [ xk >= xmin for xk in x ] + \
                       [ x[0] == x_init] + \
-                      [ xk1 == A@xk + B@uk for xk1, xk, uk in zip(x[1:], x, u)] 
+                      [ xk1 == A@xk + B@uk for xk1, xk, uk in zip(x[1:], x, u)]
 
+        #-----------------------------------------------------------
+        # NEW -- terminal ingredients! 
+        #-----------------------------------------------------------
+        if self.terminal_controller is not None: 
+            print(" Adding terminal cost!")
+            Pf = self.terminal_controller.P
+            
+        else: 
+            print(" Using x'Qx as terminal cost")
+            Pf = self.problem.Q
+        cost = cost + cp.quad_form(x[-1], Pf)  # Add terminal cost
+
+        if self.Xf is not None:
+            print(" Adding terminal set!")
+            Xf = self.Xf # Terminal set 
+            terminal_constraint = [ Xf.H @ x[-1] <= Xf.h ]
+            constraints += terminal_constraint  # Append to list 
+        
         solver = cp.Problem(cp.Minimize(cost), constraints)
 
         return solver
@@ -137,7 +155,8 @@ class MPCCvxpy(MPC):
         solver.param_dict["x_init"].value = x 
         
         # Call the solver 
-        optimal_cost = solver.solve()
+        method = cp.ECOS
+        optimal_cost = solver.solve(solver=method)
 
         if solver.status == "unbounded":
             raise RuntimeError("The optimal control problem was detected to be unbounded. This should not occur and signifies an error in your formulation.")
@@ -158,113 +177,4 @@ class MPCCvxpy(MPC):
             value = float(optimal_cost)
         
         return quadprog.QuadProgSolution(optimizer, value, success)
-    
 
-
-def check_init_feasibility(N, grid_size = 10):
-    """
-        Checks initial feasibility of the MPC problem
-    """
-    from rcracers.simulator import simulate 
-    from given.log import ControllerLog
-
-    # Get the problem data
-    problem = Problem()
-    problem.u_min = -5.0
-
-    # Define the simulator dynamics (we assume no model mismatch)
-    def f(x, u):
-        return problem.A @ x + problem.B @ u
-
-
-    problem.N = N
-    # Define the control policy
-    policy = MPCCvxpy(problem)
-
-    # Initial state 
-    p_vals = np.linspace(-10,1,grid_size)
-    v_vals = np.linspace(0,25,grid_size)
-    feasible_grid = np.zeros((len(p_vals), len(v_vals)), dtype=bool)
-    for i, v in enumerate(v_vals):
-        for j, p in enumerate(p_vals):
-            x0 = np.array([p, v])
-
-            # Run the simulation
-            logs = ControllerLog()
-            _ = simulate(x0, f, n_steps=1, policy=policy, log=logs) # Only one step (initial feasibility)
-            feasible_grid[i,j] = logs.solver_success[0]
-    # Convert to integer for plotting
-    Z = feasible_grid.astype(int)  # 1 = True (green), 0 = False (red)
-    plt.imshow(Z, origin="lower",
-    extent=[p_vals.min(), p_vals.max(), v_vals.min(), v_vals.max()],
-    cmap=plt.cm.RdYlGn,  # red = 0, green = 1
-    alpha=0.7,
-    interpolation="nearest")
-    plt.xlabel("Position")
-    plt.ylabel("Velocity")
-    plt.colorbar(label="Feasible (1) / Infeasible (0)")
-
-
-
-def braking_distance(v0, Ts, umin):
-    """
-        Calculates the braking distance for a car in discrete time given initial velocity
-
-        output: T: timesteps until stationarity
-                d: braking distance
-    """
-
-    T = np.ceil(-v0/(Ts*umin))
-    d = T*Ts*(v0 + umin*Ts *(T+1)/2)
-    return T, d
-
-def question4():
-    # get problem situation
-    problem = Problem()
-    problem.u_min = -5.0
-    # Plot constraints
-
-
-    # Plot breaking constraint (point of no return)
-    v0_vals = np.linspace(1,20,50)
-    T, d_vals = braking_distance(v0_vals, problem.Ts, problem.u_min)
-    print(d_vals)
-    print(T)
-
-
-
-    for N in [2,5,10]:
-        fig = plt.figure()
-        const_style = dict(color="black", linestyle="--")
-        plt.axvline(problem.p_max, **const_style)
-        plt.axhline(problem.v_max, **const_style)
-        plt.axhline(problem.v_min, **const_style)
-        plt.xlabel("Position")
-        plt.ylabel("Velocity")
-        plt.plot(problem.p_max-d_vals, v0_vals)
-        check_init_feasibility(N, grid_size = 20)
-        plt.title(f"Initial feasibility N= {N}")
-        plt.show()
-        if args.figs:
-            name = f"init_feas_N{N}.png"
-            fig.savefig(folder + name)
-
-
-# GLOBAL VARIABLES
-folder = "images/assignment2/"
-
-# --- Parse command-line arguments ---
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--figs", 
-    action="store_true", 
-    help="Show figures if this flag is provided"
-)
-args = parser.parse_args()
-if args.figs:
-    print("-----------------------")
-    print("Saving figures enabled!")
-    print("-----------------------")
-
-if __name__ == "__main__":
-    question4()
