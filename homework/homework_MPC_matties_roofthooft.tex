@@ -207,23 +207,33 @@ With $H = \begin{bmatrix}
 The problem is a set inclusion problem by utilizing the support function for ellipsoids $\sigma_{\epsilon(\alpha)}(v)$ we can derive an expression.
 
 \begin{equation}
-	\alpha^* = \min\left\{\frac{g_i^2}{h_i^T P^{-1} h_i} \mid i = 1, \dots, d \right\}.
+	\alpha^* = \min\left\{\frac{g_i^2}{h_i^\top P^{-1} h_i} \mid i = 1, \dots, d \right\}.
 \end{equation}
 With $h_i$ every row in linear matrix $H$ and $g_i$ values in $g$ of the combined set $X_\kappa$ .
 
 \begin{assignment}
+	\label{assig2}
 	Plot the ellipsoidal set 
 	(You can use the given \texttt{Ellipsoid} class we provide,
 	together with the function \texttt{visualization.plot\_ellipsoid} for this)
 	together with the polyhedral set $\{ x \in \R^n \mid x \in X,\; Kx \in U \}$.
 	Is the obtained ellipsoidal set a valid terminal set for the MPC problem?
 \end{assignment}
+
+\noindent
 No the obtained ellipsoidal isn't a valid terminal set yet since it doesn't consider recursive feasibility but only one step.  
-\\ \\ 
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/assignment3/ellipsoid_q2.png}
+	\caption{Ellipsoid set assignment \ref{assig2}}
+	\label{fig:ellips_q2}
+\end{figure}
 Alternatively, we can more directly encode the requirements for the 
 invariant set and solve a convex optimization problem 
 to find it. 
 
+\noindent
 Let $E = \{ x \in \R^n \mid x^\top P x \leq 1 \}$ denote our candidate set, where 
 now $P$ is the positive definite shape matrix. 
 Let $K \in \R^{m \times n}$ furthermore be a candidate state feedback gain.
@@ -238,13 +248,14 @@ $x_{t+1} = A x_t + B u_t$ under the policy $u_t = K x_t$.
 		x^\top P x \leq 1 \implies x^\top(A + BK)^\top P (A + BK)x \leq 1  \quad \forall x \in \R
 	\]
 \end{assignment}
+\noindent
 We can write this implication in terms of a matrix inequality since it holds  $ \forall x \in \mathbb{R^n}$
 \begin{equation}
-	(A+BK)^T P (A+BK) \preceq P
+	(A+BK)^\top P (A+BK) \preceq P
 \end{equation}
 And thus:
 \begin{equation}
-	P-(A+BK)^T P (A+BK) \succeq 0 \qquad \text{(PSD)}
+	P-(A+BK)^\top P (A+BK) \succeq 0 \qquad \text{(PSD)}
 \end{equation}
 
 \begin{assignment}\label{sess3:c1}
@@ -267,7 +278,39 @@ And thus:
 	\end{enumerate}
 \end{assignment}
 
+\noindent
+Multiplying inequality from left and right by $P^{-1}$
+\begin{equation}
+	P^{-1}-P^{-1}(A+BK)^\top P (A+BK)P^{-1} \succeq 0
+\end{equation}
 
+\noindent
+Introduce the change of variables:
+\begin{equation}
+	S-S(A+BK)^\top P (A+BK)S \succeq 0
+\end{equation}
+
+\begin{equation}
+	S-S(A+BK)^\top P (AS+BF) \succeq 0
+\end{equation}
+
+\begin{equation}
+	S-((A+BK)S^\top)^\top P (AS+BF) \succeq 0
+\end{equation}
+Since $S=S^\top$
+\begin{equation}
+	S-(AS+BF)^\top P (AS+BF) \succeq 0
+\end{equation}
+
+\noindent
+Applying Schur complement lemma, we arrive at the LMI: 
+\begin{equation}
+	M = \begin{bmatrix}
+		S && (AS+BF)^\top \\
+		AS+BF && S 
+	\end{bmatrix}
+	\succeq 0
+\end{equation}
 
 \begin{assignment}\label{sess3:c2}
 	Recall from the lectures that 
@@ -286,6 +329,60 @@ And thus:
 	slides. (It's also a useful exercise to derive it yourself from the definition, but this is not part of the assignment) 
 \end{assignment}
 
+\begin{proof}
+Let the candidate invariant set be the ellipsoid
+\[
+E = \{x \in \mathbb{R}^n \mid x^\top P x \le 1\},
+\qquad P \succ 0,
+\]
+and denote $S = P^{-1}$.  
+The state constraint set is the polyhedron
+\[
+X = \{x \in \mathbb{R}^n \mid H_x x \le h_x\},
+\]
+where $H_{x,i}$ is the $i$th row of $H_x$ and $h_{x,i}$ the $i$th component of $h_x$.
+
+\noindent
+\medskip
+From the lecture result, we have
+\[
+E \subseteq X
+\quad\Longleftrightarrow\quad
+\sigma_E(H_{x,i}) \le h_{x,i}, 
+\qquad i=1,\dots,m_x,
+\]
+where $\sigma_E$ denotes the support function of $E$.
+
+\medskip
+\noindent
+The support function of the ellipsoid $E=\{x\mid x^\top Px\le 1\}$ is
+\[
+\sigma_E(v)
+= \|P^{-1/2} v\|_2
+= \sqrt{v^\top P^{-1} v}
+= \sqrt{v^\top S v}.
+\]
+Applying this with $v = H_{x,i}^\top$ gives
+\[
+\sigma_E(H_{x,i}) 
+= \sqrt{H_{x,i}^\top S H_{x,i}}.
+\]
+
+\noindent
+\medskip
+Thus the inclusion condition becomes
+\[
+\sqrt{H_{x,i}^\top S H_{x,i}} \le h_{x,i},
+\qquad i = 1, \dots, m_x.
+\]
+Since both sides are nonnegative, squaring yields an equivalent constraint:
+\[
+H_{x,i}^\top S H_{x,i} \le h_{x,i}^2,
+\qquad i = 1, \dots, m_x.
+\]
+This proves the required equivalence.
+\end{proof}
+
 
 \begin{assignment}\label{sess3:c3}
 	Similarly, show that $u = Kx$ satisfies the input constraints for all $x \in E$, 
@@ -295,6 +392,63 @@ And thus:
 	\]
 	Use the Schur complement lemma to write this constraint as an LMI in $F$ and $S$.
 \end{assignment}
+
+\begin{proof}
+Consider the control law
+\[
+u = K x, \qquad x \in E = \{ x \in \mathbb{R}^n \mid x^\top P x \le 1 \}, \quad P \succ 0,
+\]
+and let $S = P^{-1}$ and $F = K S$. The input constraint set is
+\[
+U = \{ u \in \mathbb{R}^{n_u} \mid H_u u \le h_u \}, 
+\quad H_{u,i} \text{ is the $i$th row of } H_u, \ h_{u,i} \text{ its $i$th entry.}
+\]
+
+\noindent
+\medskip
+We require that all inputs satisfy the constraints:
+\[
+H_{u,i} u = H_{u,i} K x \le h_{u,i}, \quad \forall x \in E.
+\]
+
+\noindent
+The maximum value along each direction $H_{u,i}$ is given by the support function of the ellipsoid:
+\[
+\max_{x \in E} H_{u,i} K x = \sqrt{ (H_{u,i} KS) P (H_{u,i} KS)^\top } \le h_{u,i}.
+\]
+
+\noindent
+Squaring both sides and transposing scalar gives the equivalent quadratic inequality:
+\[
+H_{u,i}^\top F P F^\top H_{u,i} \le h_{u,i}^2, \qquad i = 1, \dots, m_u.
+\]
+
+\noindent
+\medskip
+To express this as an LMI in $F$ and $S$, we apply the Schur complement lemma. For a scalar $h_{u,i}^2$ and symmetric positive definite $S$, the inequality
+\[
+h_{u,i}^2 - H_{u,i}^\top F P F^\top H_{u,i} \ge 0
+\]
+is equivalent to
+\[
+\begin{bmatrix}
+h_{u,i}^2 & H_{u,i}^\top F \\
+F^\top H_{u,i} & S
+\end{bmatrix} \succeq 0.
+\]
+
+\noindent
+\medskip
+Thus, the input constraints for all $x \in E$ can be enforced by the following LMI for all $i = 1, \dots, m_u$:
+\[
+\begin{bmatrix}
+h_{u,i}^2 & H_{u,i}^\top F \\
+F^\top H_{u,i} & S
+\end{bmatrix} \succeq 0, \qquad S \succ 0,
+\]
+with decision variables $F$ and $S$.
+\end{proof}
+
 
 \begin{assignment}
 	Since the volume of the ellipsoid is proportional to $\log \det P^{-1}$, we can now 
