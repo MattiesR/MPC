@@ -538,6 +538,32 @@ radius of the circles, $l$ is the length of the vehicle and $w$ is the width of 
 
 	\textbf{Hint:} This task involves only basic geometry.
 \end{assignment}
+We first calculate the horizontal distance $d$.
+\begin{equation}
+	l = 2 n_c d 
+\end{equation}
+\begin{equation}
+	d = \frac{l}{2 n_c}
+\end{equation}
+The centers of the circles then become
+\begin{equation}
+    \mathbf{c}_i = \begin{pmatrix}
+        -l/2 + d(1+2i) \\
+        0
+    \end{pmatrix} \quad \text{for } i = 0, \dots, n_c-1
+\end{equation}
+
+Using pythagoren theorem we obtain:
+\begin{equation}
+	r = \sqrt{\left(\frac{w}{2}\right)^2 + d^2}
+\end{equation}
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/assignment4/circles.png}
+	\caption{Vehicle covered with 5 circles.}
+	\label{fig:circles_vehicle}
+\end{figure}
 
 
 \begin{assignment}
@@ -552,6 +578,27 @@ radius of the circles, $l$ is the length of the vehicle and $w$ is the width of 
 	\textbf{Hint:} You can write your result in terms of the rotation matrix $R(\psi)$ defined by 
 	the heading angle $\psi$. There is no need to work out everything into individual components.
 \end{assignment}
+
+
+The center of a circle in global coordinates, $\bar{\mathbf{c}}$, is given by:
+\begin{equation}
+	\bar{\mathbf{c}} = \mathbf{p} + \mathbf{R}(\psi) \mathbf{c}
+\end{equation}
+where $\mathbf{p} = \begin{pmatrix} p_x \\ p_y \end{pmatrix}$ is the vehicle's global position, and $\mathbf{R}(\psi)$ is the 2D rotation matrix:
+\begin{equation}
+	\mathbf{R}(\psi) = \begin{pmatrix}
+		\cos(\psi) & -\sin(\psi) \\
+		\sin(\psi) & \cos(\psi)
+	\end{pmatrix}
+\end{equation}
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/assignment4/vehicle_rotated.png}
+	\caption{Rotated vehicle.}
+	\label{fig:vehicle_rotated}
+\end{figure}
+
 
 
 \begin{assignment}
@@ -572,6 +619,19 @@ radius of the circles, $l$ is the length of the vehicle and $w$ is the width of 
 	\textbf{Hint:} Squaring can get rid of isolated points of non-smoothness.
 \end{assignment}
 
+\noindent
+The vehicle will not crash if none of its circles overlap with the ones of the obstacle vehicle.
+Mathematically we can formulate this as follows:
+
+\begin{equation}
+	\norm{\bar{c}_i - \bar{c}_{j'}}_2 \geq r + r' \quad i,j \in 0, \dots, n_c -1
+\end{equation}
+Squaring gives:
+\begin{equation}
+	g(\bar{c}_i, \bar{c}_{j'}) =  (r + r')^2 - \norm{\bar{c}_i - \bar{c}_{j'}}_2^2 \leq 0 \quad i,j \in 0, \dots, n_c -1
+\end{equation}
+The set is defined as the outerior of a disk.
+The set is nonconvex, since the set is not closed under convex combination.
 
 \begin{assignment}
 	Implement the constraint you derived into your MPC controller formulation.
