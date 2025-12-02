@@ -358,8 +358,8 @@ class MPCControllerConstrained:
         self.u = u
 
         # Create the weights for the states
-        Q = cs.diagcat(1, 20, 0.4, 0.01)
-        QT = 5 * Q + cs.diagcat(0,5,5,0)
+        Q = cs.diagcat(1, 15, 0.4, 0.001)
+        QT = 5 * Q + cs.diagcat(750,1000,100,0)
         # controls weights matrix
         R = cs.diagcat(1., 1e-4)
 
