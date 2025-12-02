@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 import sys
 import casadi as cs
 import os
@@ -225,39 +225,85 @@ class MPCController:
 
 
 
+
 class Bumper():
-    def __init__(self, vehicle : VehicleParameters, position, angle, n_c):
+    def __init__(self, vehicle : VehicleParameters, position: np.ndarray, angle: float, n_c: int):
         self.vehicle = vehicle
-        self.position = position
+        # Initial numerical position and angle (used by init_bumper)
+        self.position = position 
         self.angle = angle
         self.n_c = n_c
-        self.centers = None
+        
+        # self.local_centers: fixed in the vehicle frame (shape 2, n_c)
+        self.local_centers = None 
+        # self.global_centers: dynamic, holds the result of update_bumper (cs.SX or np.ndarray)
+        self.global_centers = None
         self.r = None
 
     def init_bumper(self):
+        """Calculates the radius and the static local centers."""
         d = self.vehicle.length/(2*self.n_c)
         self.r = np.sqrt((self.vehicle.width/2)**2 + d**2)
-        self.centers = np.array([[-self.vehicle.length / 2 + d * (1 + 2 * i), 0.0] for i in range(self.n_c)]).T # Shape (2, n_c)
+        
+        # Calculate local centers (fixed in vehicle frame)
+        local_centers_list = [
+            [-self.vehicle.length / 2 + d * (1 + 2 * i), 0.0] for i in range(self.n_c)
+        ]
+        # Store as CasADi DM for use in both numerical and symbolic paths
+        self.local_centers = cs.DM(np.array(local_centers_list).T) # Shape (2, n_c)
+        
+        # Apply initial rotation and translation (triggers numerical path)
         self.update_bumper(self.position, self.angle)
 
-    def update_bumper(self, position : np.ndarray, psi : float):
-        # Update the bumper of the vehicle when new position and orientation
-        self.angle
-        R_psi = np.array([
-                    [np.cos(psi), -np.sin(psi)],
-                    [np.sin(psi), np.cos(psi)]
-                ])
-        self.centers = position + R_psi @ self.centers
+    def update_bumper(self, position: Union[np.ndarray, cs.SX], psi: Union[float, cs.SX]):
+        """
+        Updates the global bumper centers. Handles both numerical (NumPy) 
+        and symbolic (CasADi) inputs.
         
+        NOTE: This must always rotate/translate the original self.local_centers.
+        """
+        
+        # --- NUMERICAL / SIMULATION CASE (np.ndarray) ---
+        if isinstance(position, np.ndarray):
+            # 1. Update the stored numerical state
+            self.position = position
+            self.angle = psi
+            
+            # 2. FIX: Reshape position from (2,) to (2, 1) for broadcasting
+            position_col_vector = position.reshape(2, 1)
+            
+            R_psi = np.array([
+                        [np.cos(psi), -np.sin(psi)],
+                        [np.sin(psi), np.cos(psi)]
+                    ])
+            
+            # Convert CasADi DM local centers to NumPy for the operation
+            local_centers_np = np.array(self.local_centers)
+            
+            # Rotation (R_psi @ local_centers_np) + Translation (position_col_vector)
+            self.global_centers = position_col_vector + R_psi @ local_centers_np
+
+        # --- SYMBOLIC / OCP BUILD CASE (cs.SX) ---
+        elif isinstance(position, cs.SX):
+            # No reshape needed, as x[0:2] is already a (2, 1) column vector
+            
+            R_psi = cs.vertcat(
+                cs.horzcat(cs.cos(psi), -cs.sin(psi)),
+                cs.horzcat(cs.sin(psi), cs.cos(psi))
+            )
+            
+            # CasADi handles the vector addition (translation) of the (2, 1) position
+            self.global_centers = position + R_psi @ self.local_centers
+            
+        else:
+            raise TypeError("Position input must be a NumPy array or a CasADi SX vector.")
+        
+        # Alias self.centers to global_centers for compatibility with OCP
+        self.centers = self.global_centers 
+
 
 class MPCControllerConstrained:
     def __init__(self, N: int, ts: float, bumper_controlled : Bumper, bumper_obstacle :Bumper, *, params: VehicleParameters):
-        """Constructor.
-
-        Args:
-            N (int): Prediction horizon
-            ts (float): sampling time [s]
-        """
         self.N = N
         self.ts = ts
         self.bumper_controlled = bumper_controlled
@@ -291,41 +337,17 @@ class MPCControllerConstrained:
                     diff = c_i - c_j_prime            # CasADi SX vector (2, 1)
 
                     # 3. Calculate the squared Euclidean distance: z_ij.T @ z_ij
-                    # This results in a single 1x1 CasADi SX matrix
                     dist_sq = diff.T @ diff
                     
                     # 4. Formulate the smooth constraint: R^2 - ||diff||^2 <= 0
-                    # When this is satisfied, the circles do not intersect.
                     constr = R_sq - dist_sq
                     
-                    # Append the 1x1 CasADi expression to the list
                     constraints.append(constr)
                     
-            # The list 'constraints' now contains N_c * N_c' separate 1x1 CasADi SX matrices.
-            # This is the "good form" for internal consumption.
             return constraints
 
     def build_ocp(self, params: VehicleParameters) -> Tuple[dict, dict]:
-        """
-        Build a nonlinear program that represents the parametric optimization problem described above, with the initial state x as a parameter. Use a single shooting formulation, i.e., do not define a new decision variable for the states, but rather write them as functions of the initial state and the control variables. Also return the lower bound and upper bound on the decision variables and constraint functions:
-
-        Args:
-            VehicleParameters [params]: vehicle parameters
-        Returns:
-            solver [dict]: the nonlinear program as a dictionary:
-                {"f": [cs.SX] cost (as a function of the decision variables, built as an expression, e.g., x + y, where x and y are CasADi SX.sym objects),
-                "g": [cs.Expression] nonlinear constraint function as
-                an expression of the variables and the parameters.
-                These constraints represent the bounds on the state.
-                "x": [cs.SX] decision_vars (all control actions over the prediction horizon (concatenated into a long vector)),
-                "p": [cs.SX] parameters (initial state vector)}
-            bounds [dict]: the bounds on the constraints
-                {"lbx": [np.ndarray] Lower bounds on the decision variables,
-                "ubx": [np.ndarray] Upper bounds on the decision variables,
-                "lbg": [np.ndarray] Lower bounds on the nonlinear constraint g,
-                "ubg": [np.ndarray] Upper bounds on the nonlinear constraint g
-                }
-        """
+        """Builds the OCP using single shooting."""
 
         # Create a parameter for the initial state.
         x0 = cs.SX.sym("x0", (4,1))
@@ -336,10 +358,10 @@ class MPCControllerConstrained:
         self.u = u
 
         # Create the weights for the states
-        Q = cs.diagcat(1, 3, 0.1, 0.01)
-        QT = 5 * Q
+        Q = cs.diagcat(1, 20, 0.4, 0.01)
+        QT = 5 * Q + cs.diagcat(0,5,5,0)
         # controls weights matrix
-        R = cs.diagcat(1., 1e-2)
+        R = cs.diagcat(1., 1e-4)
 
         # Initialize the cost
         cost = 0
@@ -361,32 +383,42 @@ class MPCControllerConstrained:
         ode = KinematicBicycle(params, symbolic=True)
         f = forward_euler(ode, self.ts)
 
-        # Build the cost function
+        # Initial symbolic update (required for the first set of constraints at t=0)
+        self.bumper_controlled.update_bumper(x[0:2], x[2])
+
+        # Build the cost function and constraints
         for i in range(self.N):
             cost += x.T @ Q @ x + u[i].T @ R @ u[i]
             x = f(x, u[i])
-            self.bumper_controlled.update_bumper(x[0:2], x[2])  # Update the circles around the moving car
+            
+            # Symbolic update inside the loop
+            self.bumper_controlled.update_bumper(x[0:2], x[2])
+            
             lbx.append(inputs_lb)
             ubx.append(inputs_ub)
-            g.append(x)   # Bound the state
+            
+            # State Bounds
+            g.append(x)
             lbg.append(states_lb)
             ubg.append(states_ub)
-            constraints_list = self.get_constraints() # Should have 20 elements if N_c*N_c'=20
+            
+            # Collision Constraints
+            constraints_list = self.get_constraints() 
             g_collision = cs.vertcat(*constraints_list)
             g.append(g_collision)   
 
             num_constraints = len(constraints_list)
-            # The length of this bound vector MUST match the length of g_collision
             lbg.append(cs.DM([-cs.inf] * num_constraints)) 
             ubg.append(cs.DM([0.0] * num_constraints))
-# ...   
-        cost += x.T @ QT @ x
+            
+        cost += x.T @ QT @ x    # Terminal cost
 
         variables = cs.vertcat(*u)
         nlp = {"f": cost,
             "x": variables,
             "g": cs.vertcat(*g),
             "p": x0}
+            
         bounds = {"lbx": cs.vertcat(*lbx),
                 "ubx": cs.vertcat(*ubx),
                 "lbg": cs.vertcat(*lbg),
@@ -399,14 +431,10 @@ class MPCControllerConstrained:
         return np.reshape(sol["x"], ((-1, 2)))
 
     def __call__(self, y):
-        """Solve the OCP for initial state y.
-
-        Args:
-            y (np.ndarray): Measured state
-        """
         solution = self.solve(y)
         u = self.reshape_input(solution)
         return u[0]
+
 
 
 
