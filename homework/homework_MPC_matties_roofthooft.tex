@@ -2,6 +2,8 @@
 \usepackage{assignment}
 \usepackage{codex}
 \usepackage{titlesec}
+\usepackage{subcaption} % Make sure you include this package in your preamble
+
 \titleformat{\section}
   {\Large\scshape}{Session \thesection}{1em}{}
 \title{H0E76A: Model Predictive Control\\\large--- Homework assignments ---}
@@ -16,7 +18,6 @@
 
 \begin{document}
 \maketitle
-
 
 
 The assignments below are homework assignments related to the exercise sessions that are organized throughout the 
@@ -683,6 +684,27 @@ The set is nonconvex, since the set is not closed under convex combination.
 	and illustrate the final result with a plot of the trajectory.
 \end{assignment}
 
+Without tuning the controller parameters the car wasn't able to park fully enclosed in the parking spot. 
+The vertical positioning of the car was off. To punish this more we increased the terminal cost of the y-component. It is important to increase the terminal cost of the x-component of the controller as well. Otherwise the car decides to park before the other car instead of behind it. 
+
+\noindent
+The tuned controller parameters are the following:
+\begin{equation}
+	Q = \diag (1,3,0.4,0.001)	
+\end{equation}
+\begin{equation}
+	Q_f = 5 \cdot Q + \diag(250, 3\cdot 10^3, 100, 10) 
+\end{equation}
+\begin{equation}
+	R = \diag(1.0, 10^{-4})	
+\end{equation}
+\begin{equation}
+	N = 30 \qquad n_c = 3
+\end{equation}
+
+The trajectory of the parking maneuver is shown in Figure \ref{fig:park_maneuver}.
+
+
 
 \begin{assignment}
 	Measure your solver time. A quick and easy way to do this is to invoke \texttt{perf\_counter} 
@@ -721,6 +743,60 @@ def __call__(self, y, log) -> np.ndarray:
 	Report your final tuning (any value that you changed from the provided defaults)
 	and show the timings and state trajectory of the final controller.
 \end{assignment}
+
+
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.9\textwidth]{images/assignment4/trajectory_horizon_30.png}
+	\caption{Trajectory of parking maneuver}
+	\label{fig:park_maneuver}
+\end{figure}
+
+
+\begin{figure}[ht!]
+    \centering
+    % --- First Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment4/time_horizon_30.png}
+        \caption{Solver Time vs. Iteration}
+        \label{subfig:time_30}
+    \end{subfigure}
+    \vspace{1em} % Adds a small vertical space between the subfigure
+    % --- Second Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment4/trajectory_horizon_30.png}
+        \caption{Trajectory of Parking Maneuver}
+        \label{subfig:trajectory}
+    \end{subfigure}
+    \caption{Analysis of the parking maneuver with a horizon of $N=30$. (a) Solver time per iteration. (b) Optimal vehicle trajectory.}
+    \label{fig:time_horizon_30}
+\end{figure}
+
+Decreasing the prediction horizon resolves this issue.
+The MPC controller is feasible in real-time and is still able to park fully enclosed in the parking spot.
+
+\begin{figure}[ht!]
+    \centering
+    % --- First Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment4/time_horizon_10.png}
+        \caption{Solver Time vs. Iteration}
+        \label{subfig:time_10}
+    \end{subfigure}
+    \vspace{1em} % Adds a small vertical space between the subfigure
+    % --- Second Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment4/trajectory_horizon_10.png}
+        \caption{Trajectory of Parking Maneuver}
+        \label{subfig:trajectory_10}
+    \end{subfigure}
+    \caption{Analysis of the parking maneuver with a horizon of $N=10$. (a) Solver time per iteration. (b) Optimal vehicle trajectory.}
+    \label{fig:time_horizon10}
+\end{figure}
 
 
 \newpage

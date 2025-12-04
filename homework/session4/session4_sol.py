@@ -12,6 +12,8 @@ from rcracers.simulator.dynamics import KinematicBicycle
 import numpy as np
 import matplotlib.pyplot as plt
 from rcracers.simulator import simulate
+from dataclasses import dataclass
+from rcracers.simulator.core import BaseControllerLog, list_field
 
 PARK_DIMS = np.array((0.25, 0.12)) # w x h of the parking spot. Just for visualization purposes.
 
@@ -358,8 +360,8 @@ class MPCControllerConstrained:
         self.u = u
 
         # Create the weights for the states
-        Q = cs.diagcat(1, 15, 0.4, 0.001)
-        QT = 5 * Q + cs.diagcat(750,1000,100,0)
+        Q = cs.diagcat(1, 3, 0.4, 0.001)
+        QT = 5 * Q + cs.diagcat(250,3e3,100,10)
         # controls weights matrix
         R = cs.diagcat(1., 1e-4)
 
@@ -430,9 +432,12 @@ class MPCControllerConstrained:
     def reshape_input(self, sol):
         return np.reshape(sol["x"], ((-1, 2)))
 
-    def __call__(self, y):
+    def __call__(self, y, log):
+        start = perf_counter()
         solution = self.solve(y)
+        stop = perf_counter()
         u = self.reshape_input(solution)
+        log("solver_time", stop-start)
         return u[0]
 
 
@@ -544,12 +549,18 @@ def question4():
     bicycle_true = KinematicBicycle(VehicleParameters())
     dynamics_accurate = exact_integration(bicycle_true, ts)
     x_closed_loop_exact = simulate(x0, dynamics_accurate, n_steps=nstep, policy=controller)
-
-    plt.figure()
+    print(x_closed_loop_exact.shape)
+    fig = plt.figure()
     print("Using the accurate model")
     plot_state_trajectory(x_closed_loop_exact, color="tab:red", label="Real")
-    
-    plt.title("Trajectory (parameter error)")
+    obstacle_x = np.array([np.array([0.25,0,0,0]),np.array([0.25,0,0,0])])
+    plot_state_trajectory(obstacle_x, color="tab:blue", label="Real")
+    plt.title("Trajectory of parking maneuver")
+    if args.figs:
+        name = "trajectory.png"
+        fig.savefig(folder + name)
+
+
     plt.show()
 
     print("---Extra: run an animation")
@@ -560,10 +571,88 @@ def question4():
     anim.run()
     return 0
 
+
+@dataclass
+class ControllerLog(BaseControllerLog):
+    solver_time: list = list_field()
+
+from time import perf_counter
+
+def question5():
+    print("Assignment 4.6")
+    x0 = np.array([0.3,-0.1,0,0])
+    N = 10
+    ts = 0.08
+    obstacle_pos = np.array([0.25,0])
+
+    n_c = 3
+    bumper_controlled = Bumper(VehicleParameters(),x0[0:2], x0[2], n_c)
+    bumper_obstacle = Bumper(VehicleParameters(), obstacle_pos, 0, n_c)
+    bumper_controlled.init_bumper()
+    bumper_obstacle.init_bumper()
+
+    nstep = 100
+
+    # Build the assumed model
+    print("--Set up the MPC controller")
+    controller = MPCControllerConstrained(N=N, ts=ts, bumper_controlled=bumper_controlled, bumper_obstacle=bumper_obstacle, params=VehicleParameters())
+
+    bicycle_true = KinematicBicycle(VehicleParameters())
+    dynamics_accurate = exact_integration(bicycle_true, ts)
+
+    log = ControllerLog()   # Initialize an empty log
+    x_closed_loop_exact = simulate(x0, dynamics_accurate, n_steps=nstep, policy=controller,log=log)
+    
+    # Plot of the solver time with horizon
+    fig1 = plt.figure()
+    plt.plot(log.solver_time)
+    plt.axhline(0.08, linestyle="--", label="$T_s$")
+    plt.xlabel("Iteration [-]")
+    plt.ylabel("Time [s]")
+    plt.legend()
+    plt.title(f"Solver time horizon={N}")
+
+    fig2 = plt.figure()
+    print("Using the accurate model")
+    plot_state_trajectory(x_closed_loop_exact, color="tab:red")
+    obstacle_x = np.array([np.array([0.25,0,0,0]),np.array([0.25,0,0,0])])
+    plot_state_trajectory(obstacle_x, color="tab:blue")
+    plt.title(f"Trajectory of parking maneuver - horizon= {N}")
+    if args.figs:
+        name1 = f"time_horizon_{N}.png"
+        fig1.savefig(folder + name1)
+        name2 = f"trajectory_horizon_{N}.png"
+        fig2.savefig(folder + name2)
+
+    plt.show()
+
+    print("---Extra: run an animation")
+    anim = AnimateParking()
+    anim.setup(x_closed_loop_exact, ts, obstacle_positions=[obstacle_pos])
+    anim.add_car_trajectory(x_closed_loop_exact, color=(150, 10, 50))
+    anim.trace(x_closed_loop_exact)
+    anim.run()
+
+
+import argparse
+
+# GLOBAL VARIABLES
+folder = "images/assignment4/"
+
+# --- Parse command-line arguments ---
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--figs", 
+    action="store_true", 
+    help="Show figures if this flag is provided"
+)
+args = parser.parse_args()
+if args.figs:
+    print("-----------------------")
+    print("Saving figures enabled!")
+    print("-----------------------")
+
+
 if __name__ == "__main__":
-    question4()
-    # exercise1()
-    # exercise2()
-    # exercise3()
-    # exercise4()
-    # exercise5()
+    # question4()
+    question5()
