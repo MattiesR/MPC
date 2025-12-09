@@ -158,6 +158,32 @@ The breaking distance given initial velocity $v_0$ should be lower than the dist
 \end{assignment}
 
 
+\begin{figure}[ht!]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment2/init_feas_N2.png}
+        \caption{}
+        \label{}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment2/init_feas_N5.png}
+        \caption{}
+        \label{}
+    \end{subfigure}
+	\begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment2/init_feas_N10.png}
+        \caption{}
+        \label{}
+    \end{subfigure}
+    \caption{}
+    \label{}
+\end{figure}
+
+
+
 \newpage
 \section{MPC theory: terminal ingredients}
 During the sessions, we have computed polyhedral invariant sets to use 
@@ -460,6 +486,12 @@ with decision variables $F$ and $S$.
 \end{assignment}
 
 
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/assignment3/ellipsoid_q3_lmi.png}
+	\caption{Ellipsoid set}
+	\label{fig:ellips_q3}
+\end{figure}
 
 
 \newpage
@@ -839,7 +871,58 @@ x, w = solver(P=np.eye(3), x0=np.zeros(3), y=np.zeros((10, 1)))
     \end{enumerate}
     \solution{See \texttt{MHE} in \texttt{session4\_sol.py}.} 
 \end{assignment}
+\noindent
+First the EKF has to be initialized. 
+We need to store $N+1$ past estimates and past covariance estimates.
 
+\medskip
+\noindent
+The results are shown in Figures \ref{fig:MHE_prior_N10} and \ref{fig:MHE_prior_N25} for a moving horizon of 10 and 25 respectively. 
+The estimates are rapidly converging towards the actual states which indicate the improved performance.
+Clipping the state estimates slightly improves the performance as well, especially for the lower horizon case.
+
+\begin{figure}[ht!]
+    \centering
+    % --- First Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_10_clip_False.png}
+        \caption{Without clipping}
+        \label{subfig:N_10_clipping_false}
+    \end{subfigure}
+    \vspace{1em} % Adds a small vertical space between the subfigure
+    % --- Second Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_10_clip_True.png}
+        \caption{With clipping}
+        \label{subfig:N_10_clipping_true}
+    \end{subfigure}
+    \caption{MHE with prior filtering for an horizon of 10.}
+    \label{fig:MHE_prior_N10}
+\end{figure}
+
+
+\begin{figure}[ht!]
+    \centering
+    % --- First Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_25_clip_False.png}
+        \caption{Without clipping}
+        \label{subfig:N_25_clipping_false}
+    \end{subfigure}
+    \vspace{1em} % Adds a small vertical space between the subfigure
+    % --- Second Subfigure ---
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_25_clip_True.png}
+        \caption{With clipping}
+        \label{subfig:N_25_clipping_true}
+    \end{subfigure}
+    \caption{MHE with prior filtering for an horizon of 25.}
+    \label{fig:MHE_prior_N25}
+\end{figure}
 
 
 \newpage 

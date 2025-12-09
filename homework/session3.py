@@ -130,22 +130,25 @@ def question2():
     # plot_polytope(state_set, label="X") # Don't plot because otherwise ellipsoid not visible
     fig = plt.figure()
     plot_polytope(
-        state_set.intersect(input_set), label=r"${x \in X: Kx \in U}$", color="red"
+        state_set.intersect(input_set), label=r"${x \in X: K^\infty x \in U}$", color="red"
     )
-    plt.title("Comparison ellipsoid and polyhedral set $X_\kappa$")
+    plt.title("Invariant sets for LQR gain $K^\infty$")
 
     # Finding the largest ellipsoid
     ellips = find_largest_ellipsoid(lqr_solution.P, state_kappa_set)
 
-    plot_ellipsoid(ellips, label=f"maximal ellipsoid centered at 0")
+    plot_ellipsoid(ellips, label=r"${x \in x^\top S^{-1} x \leq 1}$")
     plt.legend()
-    plt.xlabel("Position")
-    plt.ylabel("Velocity")
+    plt.xlabel("Position [m]")
+    plt.ylabel("Velocity [m/s]")
     plt.show()
     if args.figs:
         name = "ellipsoid_q2.png"
         fig.savefig(folder + name)
     return 0
+
+
+
 
 def question3():
     """
@@ -155,7 +158,7 @@ def question3():
     print("--Compute LQR solution")
     lqr_solution = dlqr(problem.A, problem.B, problem.Q, problem.R)
     K_lqr = lqr_solution.K
-
+    print(f"K_lqr: {K_lqr}")
     state_set = build_state_set(problem)  # returns H_x, h_x
     input_set = build_input_set_u(problem)  # returns H_u, h_u
 
@@ -164,21 +167,21 @@ def question3():
     state_kappa_set = state_set.intersect(input_x_set)
 
     n = problem.A.shape[0]
-    m_u = problem.B.shape[1]
+    m = problem.B.shape[1]
 
     # Decision variables: S = P^{-1} and F = K S
-    S = cp.Variable((n, n), symmetric=True)
-    F = cp.Variable((m_u, n))
+    S = cp.Variable((n, n), PSD=True)
+    F = cp.Variable((m, n))
 
     # constraints = [S >> 1e-6*np.eye(n)]  # S > 0 for PSD
     constraints = []
     # State constraints: H_xi^T S H_xi <= h_xi^2
     H_x, h_x = state_set.H, state_set.h  # assume rows: H_x[i,:], h_x[i]
     for i in range(H_x.shape[0]):
-            Hi = H_x[i,:].reshape(1, -1)
+            Hi = H_x[i,:]
+            h_val = h_x[i]
             # LMI equivalent to Hi @ P^{-1} @ Hi.T <= h_i**2
-            constraints.append(Hi @ S @ Hi.T <= h_x[i]**2)
-
+            constraints.append(cp.quad_form(Hi, S) <= h_val)
     A = problem.A
     B = problem.B
     M = cp.bmat([[S, (A @ S + B @ F).T],
@@ -190,18 +193,16 @@ def question3():
     n = S.shape[0] # Assuming S is n x n, so n is the dimension of F
     
     for i in range(H_u.shape[0]):
-        Hi = H_u[i, :].reshape(1, -1)  # 1 x n
+        Hi = H_u[i, :]
+        hu_val = h_u[i]
     
-        top_right = Hi @ F                  # 1 x n
+        top_right = (Hi @ F).reshape((1,n))                  # 1 x n
         bottom_left = top_right.T           # n x 1
         
-        scalar_block = cp.reshape(h_u[i]**2, (1, 1)) # 1 x 1
-
-        # Stack blocks manually like NumPy
-        top = cp.hstack([scalar_block, top_right]) # 1 x (1+n)
-        bottom = cp.hstack([bottom_left, S])       # n x (1+n)
-        LMI = cp.vstack([top, bottom])             # (1+n) x (1+n)
-
+        LMI = cp.bmat([
+            [np.array([[hu_val**2]]), top_right],
+            [bottom_left,                  S]
+        ])
         constraints.append(LMI >> 0)
        
     # Objective: maximize trace(S) or logdet(S) to maximize ellipsoid volume
@@ -219,19 +220,22 @@ def question3():
     print(F_val)
 
     K_opt = F_val @ np.linalg.inv(S_val)
-
+    print(f"K_opt: {K_opt}")
+        # Intersected polyhedral set X_kappa
+    input_x_set = build_input_set(problem, K_opt)
+    state_kappa_set = state_set.intersect(input_x_set)
+    
     # Plotting
     fig = plt.figure()
-    plot_polytope(state_kappa_set, label=r"$X_\kappa$", color="red")
-
+    plot_polytope(state_kappa_set, label=r"${x \in X: Kx \in U}$", color="red")
     # Construct ellipsoid: {x | x^T P x <= 1}, P = S^{-1}
     P_opt = np.linalg.inv(S_val)
     ellips = Ellipsoid(P_opt)  # Adapt this to your plotting function
-    plot_ellipsoid(ellips, label=f"maximal ellipsoid centered at 0")
+    plot_ellipsoid(ellips, label=r"${x \in x^\top S^{-1} x \leq 1}$")
 
-    plt.title("Maximal ellipsoid inside $X_\kappa$")
-    plt.xlabel("Position")
-    plt.ylabel("Velocity")
+    plt.title("Invariant sets for optimal gain K")
+    plt.xlabel("Position [m]")
+    plt.ylabel("Velocity [m/s]")
     plt.legend()
     plt.show()
     if args.figs:
@@ -239,6 +243,7 @@ def question3():
         fig.savefig(folder + name)
 
     return 0
+
 
 # GLOBAL VARIABLES
 folder = "images/assignment3/"
@@ -257,4 +262,5 @@ if args.figs:
     print("-----------------------")
 
 if __name__ == "__main__":
+    question2()
     question3()
