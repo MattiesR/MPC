@@ -106,8 +106,9 @@ class MHE:
             # Use prior
             self.x0 = x0
             self.ekf = EKF(self.f,self.h, self.x0, Q=Q, R=R, clipping=clipping)
-            self.P_estimates = [np.eye(3)*0.5] # Low confidence in initial prior
+            self.P_estimates = [np.eye(3)*0.5] # High confidence in initial prior
             self.x_estimates = [x0]
+            self.measurement_buffer = []
 
     @property
     def nx(self):
@@ -138,35 +139,35 @@ class MHE:
                 self.h,
                 horizon,
                 lbx=self.lbx,
-                ubx=self.ubx
+                ubx=self.ubx,
             )
     def __call__(self, y: np.ndarray, log: LOGGER):
         
         if self.use_prior:
             # store the new measurement
             self.y.append(y)
-
-            # Run the EKF
-            self.ekf.__call__(y)
-            self.P_estimates.append(self.ekf.P) # Store at end of queue
-            self.x_estimates.append(self.ekf.x) # Store at end of queue
-            
             if len(self.y) > self.horizon:
                 self.y.pop(0)
 
-            if len(self.P_estimates) > self.horizon + 1:
-                self.P_estimates.pop(0)
-
-            if len(self.x_estimates) > self.horizon + 1:
-                self.x_estimates.pop(0)
 
             # get solver and bounds
             solver = self.solver
             if len(self.y) < self.horizon:
                 solver = self.build(len(self.y))
             
-            # update mhe
-            x, _ = solver(self.P_estimates[0], self.x_estimates[0], self.y) # Take the 
+            # 1. Solve MHE using previous arrival cost
+            x, _ = solver(self.P_estimates[0], self.x_estimates[0], self.y)
+
+            # 2. Extract arrival state for future use
+            self.x_estimates.append(x[-1, :])
+            if len(self.x_estimates) > self.horizon + 1:
+                self.x_estimates.pop(0)
+
+            # 3. NOW update EKF (used only for covariance)
+            self.ekf(y)
+            self.P_estimates.append(self.ekf.P)
+            if len(self.P_estimates) > self.horizon + 1:
+                self.P_estimates.pop(0)
 
         else:
             # store the new measurement
@@ -185,6 +186,7 @@ class MHE:
         # update log
         log("x", x[-1, :])
         log("y", y)
+   
 
 
 def show_result(t: np.ndarray, x: np.ndarray, x_):
@@ -293,7 +295,8 @@ def part_3():
             fs, hs = get_system_equations(symbolic=True, noise=True, Ts=cfg.Ts)
 
             # setup the moving horizon estimator
-            mhe = MHE(fs, hs, horizon=horizon,clipping=clipping, use_prior=True, x0=cfg.x0)
+            mhe = MHE(fs, hs, horizon=horizon,clipping=clipping, use_prior=True, x0=cfg.x0_est)
+            mhe_np = MHE(fs, hs, horizon=horizon,clipping=clipping, use_prior=False, x0=cfg.x0_est)
 
             # prepare log
             log = ObserverLog()
@@ -303,16 +306,25 @@ def part_3():
             f, h = get_system_equations(noise=(0.0, cfg.sig_v), Ts=cfg.Ts, rg=cfg.rg)
             x = simulate(cfg.x0, f, n_steps=n_steps, policy=mhe, measure=h, log=log)
             t = np.arange(0, n_steps+1) * cfg.Ts
-
+            
             # plot output in `x` and `log.x`
             title = f"MHE with prior filtering: N={horizon}, clipping={clipping}"
-            fig = show_result(t, x, log.x)
-            plt.title(title)
-            plt.show()
-            if args.figs:
-                name = f"MHE_prior_N_{horizon}_clip_{clipping}"
-                fig.savefig(folder + name)
+            fig1 = show_result(t, x, log.x)
+            # plt.title(title)
 
+            log_np = ObserverLog()
+            log_np.append("x", cfg.x0_est)
+            x_np = simulate(cfg.x0, f, n_steps=n_steps, policy=mhe_np, measure=h, log=log_np)
+            fig2 = show_result(t,x_np, log_np.x)
+            title2 = f"MHE without prior filtering: N={horizon}, clipping={clipping}"
+            # plt.title(title2)
+            if args.figs:
+                name1 = f"MHE_prior_N_{horizon}_clip_{clipping}"
+                fig1.savefig(folder + name1)
+
+                name2 = f"MHE_np_N_{horizon}_clip_{clipping}"
+                fig2.savefig(folder + name2)
+    plt.show()
 
 import argparse
 

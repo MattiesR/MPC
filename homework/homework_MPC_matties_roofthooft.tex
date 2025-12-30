@@ -99,7 +99,7 @@ final exercise of the session, and to gain some intuition about ways to fix it.
 In essence, the problem that occurs is a symptom of the myopic nature of MPC,
 that is, it can only take into account what happens in the very near future.
 To rectify this, we have to provide it with information about the long-term
-behavior of the system under the applied controls.
+behaviour of the system under the applied controls.
 
 \textbf{Remark.} The assignments in this session should be performed in discrete time.
 
@@ -863,7 +863,7 @@ x, w = solver(P=np.eye(3), x0=np.zeros(3), y=np.zeros((10, 1)))
         internally?
 
         \item Verify, both for longer horizons ($N = 25$) and shorted ($N=10$) ones
-        that the filtering prior improves the behavior. Plot the estimated 
+        that the filtering prior improves the behaviour. Plot the estimated 
 		trajectories.
         
         \item Does clipping the state estimates in the \emph{EKF} aid the 
@@ -880,54 +880,65 @@ We need to store $N+1$ past estimates and past covariance estimates.
 The results are shown in Figures \ref{fig:MHE_prior_N10} and \ref{fig:MHE_prior_N25} for a moving horizon of 10 and 25 respectively. 
 The estimates are rapidly converging towards the actual states which indicate the improved performance.
 Clipping the state estimates slightly improves the performance as well, especially for the lower horizon case.
-
+ 
 \begin{figure}[ht!]
     \centering
-    % --- First Subfigure ---
-    \begin{subfigure}[b]{0.45\textwidth}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_np_N_10_clip_False.png}
+        \caption{Without prior}
+        \label{}
+    \end{subfigure}
+    \vspace{1em}
+    \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_10_clip_False.png}
-        \caption{Without clipping}
-        \label{subfig:N_10_clipping_false}
+        \caption{With prior}
+        \label{}
     \end{subfigure}
-    \vspace{1em} % Adds a small vertical space between the subfigure
-    % --- Second Subfigure ---
-    \begin{subfigure}[b]{0.45\textwidth}
+    \label{}
+    \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_10_clip_True.png}
-        \caption{With clipping}
-        \label{subfig:N_10_clipping_true}
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_np_N_25_clip_False.png}
+        \caption{Without prior}
+        \label{}
     \end{subfigure}
-    \caption{MHE with prior filtering for an horizon of 10.}
-    \label{fig:MHE_prior_N10}
+    \vspace{1em} 
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_25_clip_False.png}
+        \caption{With prior}
+        \label{}
+    \end{subfigure}
+    \caption{MHE with prior filtering for horizon 10 (upper) and horizon 25 (lower) without clipping.}
+    \label{}
 \end{figure}
 
 
 \begin{figure}[ht!]
     \centering
     % --- First Subfigure ---
-    \begin{subfigure}[b]{0.45\textwidth}
+    \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_25_clip_False.png}
-        \caption{Without clipping}
-        \label{subfig:N_25_clipping_false}
+        \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_10_clip_True.png}
+        \caption{Horizon 10}
+        \label{}
     \end{subfigure}
     \vspace{1em} % Adds a small vertical space between the subfigure
     % --- Second Subfigure ---
-    \begin{subfigure}[b]{0.45\textwidth}
+    \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{images/assignment5/MHE_prior_N_25_clip_True.png}
-        \caption{With clipping}
-        \label{subfig:N_25_clipping_true}
+        \caption{Horizon 25}
+        \label{}
     \end{subfigure}
-    \caption{MHE with prior filtering for an horizon of 25.}
+    \caption{MHE with prior filtering and clipping enabled.}
     \label{fig:MHE_prior_N25}
 \end{figure}
 
 
 \newpage 
 \section{Optimization}
-
 The goal of this assignment is to get familiar with methods for solving nonlinear MPC problems. 
 Due to the nonlinearity of the dynamics, the OCP
 will be nonconvex and therefore, the methods from during the session will no longer be applicable. 
@@ -963,9 +974,17 @@ for multiple shooting (i.e., simultaneous approach).
 	a linear system. Is the output what you expect? Why?
 \end{assignment}
 \begin{lstlisting}[style=python]
-	<Paste the output of the program here.>
+	it.    0 | JN = 1.51e+04 | ||h||2 = 1.15e-13
+	it.    1 | JN = 1.51e+04 | ||h||2 = 1.35e-13
+	Converged
 \end{lstlisting}
 
+\noindent
+The output is as expected.
+For a problem with linear dynamics and quadratic cost, the Newton-Lagrange QP coincides exactly with the original optimal control problem. Therefore, the Newton step computes the exact solution in a single iteration.
+
+\noindent
+The solver performs one additional iteration because the stopping criterion is based on the norm of the update $\Delta u_k$, which becomes zero after the optimal solution has been reached.
 
 \subsection{Nonlinear test case}
 Now that you have tested your implementation on a linear system,
@@ -993,6 +1012,31 @@ The problem that you can pass to your SQP solver is described by \texttt{ToyProb
 	figure of the final solution. Add this plot in your report. Does your solution look plausible?
 \end{assignment}
 
+\noindent
+The constraint violation decreases rapidly over the iterations, indicating that the discretized state dynamics (multiple-shooting constraints) are enforced correctly.
+Figure \ref{fig:ass6-2-zero} shows the predicted state and input trajectories of the final iterate.
+The resulting trajectories remain bounded and converge to zero, which suggests that the obtained solution is physically meaningful and satisfies the local optimality conditions.
+Since the states and inputs converge to zero, the regulation problem is successfully solved.
+
+\medskip
+\noindent
+The iteration log clearly demonstrates the locally quadratic convergence of the constraint violation, as expected for the Newton-Lagrange method.
+\begin{lstlisting}[style=python]
+	it.    0 | JN = 2.26e+02 | ||h||2 = 2.24e-01
+	it.    1 | JN = 2.26e+02 | ||h||2 = 2.11e-02
+	it.    2 | JN = 2.26e+02 | ||h||2 = 7.45e-05
+	it.    3 | JN = 2.26e+02 | ||h||2 = 9.11e-08
+	it.    4 | JN = 2.26e+02 | ||h||2 = 1.17e-10
+	Converged
+\end{lstlisting}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.75\textwidth]{session6/Assignment6-2.pdf}
+	\caption{Predicted time evolution after 6 iterations.}
+	\label{fig:ass6-2-zero}
+\end{figure}
+
 
 \begin{assignment} \label{assgn:simulate-init}
    Simulate the system and use this as an initial guess.
@@ -1006,6 +1050,53 @@ The problem that you can pass to your SQP solver is described by \texttt{ToyProb
 \end{assignment}
 
 
+\noindent
+The solver fails to converge, as shown in Figure \ref{fig:no-linesearch}, because the open-loop trajectory used as an initial guess (Figure \ref{fig:ass6-openloop}) is far from the optimal solution obtained in the previous exercise.
+Due to the unstable open-loop dynamics, this trajectory quickly diverges, resulting in a poor initial guess.
+As a consequence, the local linearization of the dynamics provides a poor approximation of the true nonlinear system behaviour.
+
+\medskip
+\noindent
+Since the Newton-Lagrange method relies on local second-order information, taking full Newton steps from such an initial guess leads to large and inaccurate updates, causing the iterates to diverge.
+
+\medskip
+\noindent
+This illustrates the local nature of Newton-type methods and the importance of globalization techniques such as line search.
+
+\medskip
+\noindent
+This behaviour is also reflected in the iteration log, where both the cost and the constraint violation oscillate and occasionally grow by several orders of magnitude, indicating the absence of a descent property without globalization.
+
+\begin{lstlisting}[style=python]
+	it.    0 | JN = 2.86e+05 | ||h||2 = 5.00e+03
+	it.    1 | JN = 2.91e+04 | ||h||2 = 9.58e+02
+	it.    2 | JN = 2.71e+03 | ||h||2 = 2.24e+02
+	it.    3 | JN = 3.40e+05 | ||h||2 = 8.05e+04
+	it.    4 | JN = 1.85e+05 | ||h||2 = 2.06e+04
+	it.    5 | JN = 3.93e+04 | ||h||2 = 6.15e+03
+	it.    -------------------------------------
+	it.   47 | JN = 3.09e+05 | ||h||2 = 4.96e+04
+	it.   48 | JN = 4.53e+05 | ||h||2 = 2.10e+04
+	it.   49 | JN = 2.21e+05 | ||h||2 = 1.01e+04
+	it.   50 | JN = 5.35e+04 | ||h||2 = 3.25e+03
+	it.   51 | JN = 1.30e+07 | ||h||2 = 1.12e+06
+	Diverged
+\end{lstlisting}
+
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.75\textwidth]{images/openloop.pdf}
+	\caption{Openloop simulation of the states for zero input policy}
+	\label{fig:ass6-openloop}
+\end{figure}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.75\textwidth]{session6/Assignment6-4-no-linesearch1.pdf}
+	\caption{Diverged solution without linesearch.}
+	\label{fig:no-linesearch}
+\end{figure}
 
 \subsection{Adding Line Search}
 
@@ -1026,7 +1117,46 @@ The problem that you can pass to your SQP solver is described by \texttt{ToyProb
    How do you explain this?
 \end{assignment}
 
+\noindent
+Figure \ref{fig:linesearch} shows the output of the method at the final iterate with linesearch enabled.
+With line search enabled, the method converges after 65 iterations to the same solution as in Assignment \ref{assgn:62}. 
 
+\noindent
+The line search enforces sufficient decrease of the merit function
+\begin{equation}
+	\phi(z) = J_N(z) + c \nrm{h(z)}_1 
+\end{equation}
+which prevents overly aggressive Newton steps when the linearization is inaccurate.
+
+\noindent
+As a result, the solver is able to make progress even when starting far from the solution, illustrating the importance of globalization strategies in nonlinear optimization.
+
+\medskip
+\noindent
+From the iteration log, it can be observed that the constraint violation decreases monotonically once the line search becomes effective, while the cost converges more gradually, which is typical for merit-function-based globalization. Notably, around iteration 62, as the iterate approaches the local optimum, the constraint violation begins to decrease at a locally quadratic rate, as expected for the Newton–Lagrange method, following the initial slower progress caused by globalization.
+\begin{lstlisting}[style=python]
+	it.    0 | JN = 2.86e+05 | ||h||2 = 5.00e+03
+	it.    1 | JN = 2.91e+04 | ||h||2 = 9.58e+02
+	it.    2 | JN = 2.71e+03 | ||h||2 = 2.24e+02
+	it.    3 | JN = 2.72e+03 | ||h||2 = 2.24e+02
+	it.    4 | JN = 4.73e+03 | ||h||2 = 1.49e+02
+	it.    5 | JN = 1.01e+03 | ||h||2 = 3.22e+01
+	it.    -------------------------------------
+	it.   61 | JN = 2.27e+02 | ||h||2 = 6.36e-01
+	it.   62 | JN = 2.26e+02 | ||h||2 = 1.43e-01
+	it.   63 | JN = 2.26e+02 | ||h||2 = 1.16e-02
+	it.   64 | JN = 2.26e+02 | ||h||2 = 1.47e-04
+	it.   65 | JN = 2.26e+02 | ||h||2 = 1.64e-07
+	Converged
+\end{lstlisting}
+
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.75\textwidth]{session6/Assignment6-4-linesearch.pdf}
+	\caption{Converged solution with linesearch.}
+	\label{fig:linesearch}
+\end{figure}
 
 
 \begin{assignment}
@@ -1037,6 +1167,66 @@ The problem that you can pass to your SQP solver is described by \texttt{ToyProb
 	\textbf{Hint. } During the Newton-Lagrange iterations, check whether the Hessian of the QP cost is positive definite.
 \end{assignment}
 
+\noindent
+Figure \ref{fig:results_noreg} shows the final iterate of the optimization process without regularization.
+The predicted state trajectories are highly non-smooth, and the resulting trajectory does not converge to a feasible parking maneuver.
+
+\medskip
+\noindent
+The method fails to converge because the Hessian of the QP cost is frequently indefinite, resulting in nonconvex quadratic subproblems.
+In this situation, the Newton direction may correspond to a saddle point or even an ascent direction for the cost function, which prevents convergence despite the use of line search.
+This behaviour is confirmed by the negative smallest eigenvalues of the QP Hessians shown in Figure \ref{fig:eig_hessian}.
+
+\medskip
+\noindent
+The iteration log further illustrates this issue: both the cost and the constraint violation exhibit oscillatory behaviour and do not decrease monotonically, indicating that the Newton directions are unreliable when the QP Hessian is indefinite.
+
+\begin{lstlisting}[style=python]
+	it.    0 | JN = 2.77e+02 | ||h||2 = 6.66e-16
+	it.    1 | JN = 2.77e+02 | ||h||2 = 5.12e-15
+	it.    -------------------------------------
+	it.   10 | JN = 2.71e+02 | ||h||2 = 1.25e-02
+	it.   11 | JN = 2.66e+02 | ||h||2 = 2.26e-02
+	it.   --------------------------------------
+	it.   89 | JN = 2.13e+02 | ||h||2 = 1.04e-01
+	it.   90 | JN = 2.14e+02 | ||h||2 = 1.04e-01
+	it.   --------------------------------------
+	it.  101 | JN = 2.19e+02 | ||h||2 = 7.42e-02
+	it.  102 | JN = 2.19e+02 | ||h||2 = 7.42e-02
+	it.   --------------------------------------
+	it.  140 | JN = 1.68e+02 | ||h||2 = 1.02e-01
+	it.  141 | JN = 1.66e+02 | ||h||2 = 1.02e-01
+	it.  ---------------------------------------
+	it.  198 | JN = 1.08e+02 | ||h||2 = 1.04e-01
+	it.  199 | JN = 1.08e+02 | ||h||2 = 1.04e-01
+	Maximum number of iterations exceeded
+\end{lstlisting}
+
+\begin{figure}[ht!]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{session6/Assignment6-5-regFalse.pdf}
+        \caption{Predicted states in time}
+        \label{}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{session6/Assignment6-5-parking_regularize-False.pdf}
+        \caption{Predicted trajectory}
+        \label{}
+    \end{subfigure}
+    \caption{Final iterates of the method without regularization.}
+    \label{fig:results_noreg}
+\end{figure}
+
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.75\textwidth]{images/assignment6/min_eig_hessians.pdf}
+	\caption{Smallest eigenvalues of QP Hessians.}
+	\label{fig:eig_hessian}
+\end{figure}
 
 
 \subsection{Adding Regularization}
@@ -1051,10 +1241,59 @@ The problem that you can pass to your SQP solver is described by \texttt{ToyProb
 	With this modification, run the method again on the Parking problem. Does it converge? 
 	\textbf{Hint.}  Make sure to set \texttt{cfg.regularize} to \texttt{True}!
 \end{assignment}
+\noindent
+By adding a multiple of the identity matrix to the Hessian, all QP subproblems are rendered strictly convex.
+This guarantees that each Newton-Lagrange step is well-defined and corresponds to a descent direction for the merit function.
 
+\medskip
+\noindent
+As a result, the solver converges reliably to a feasible and smooth solution, as shown in Figure \ref{fig:results_reg}.
+The smallest eigenvalues of the regularized Hessians remain positive throughout the iterations (Figure \ref{fig:eig_hessian-regularize}), confirming convexity of all QP subproblems.
 
- 
+\medskip
+\noindent
+After regularization, the iteration history shows a steady decrease in both the cost and the constraint violation, indicating that the QP subproblems are well-conditioned and the Newton directions remain reliable.
+However, regularization perturbs the Hessian of the Lagrangian, destroying the locally quadratic convergence of the Newton-Lagrange method and resulting in superlinear convergence instead.
 
+\begin{lstlisting}[style=python]
+	it.    0 | JN = 2.77e+02 | ||h||2 = 6.66e-16
+	it.    1 | JN = 2.31e+02 | ||h||2 = 6.92e-02
+	it.    2 | JN = 1.70e+02 | ||h||2 = 2.10e-01
+	it.    3 | JN = 1.21e+02 | ||h||2 = 1.42e-01
+	it.    4 | JN = 1.01e+02 | ||h||2 = 1.06e-01
+	it.    5 | JN = 9.70e+01 | ||h||2 = 8.31e-02
+	it.    -------------------------------------
+	it.   49 | JN = 8.33e+01 | ||h||2 = 2.37e-08
+	it.   50 | JN = 8.33e+01 | ||h||2 = 1.82e-08
+	it.   51 | JN = 8.33e+01 | ||h||2 = 1.40e-08
+	it.   52 | JN = 8.33e+01 | ||h||2 = 1.07e-08
+	it.   53 | JN = 8.33e+01 | ||h||2 = 8.23e-09
+	Converged
+\end{lstlisting}
+\begin{figure}[ht!]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{session6/Assignment6-5-regTrue.pdf}
+        \caption{Predicted states in time}
+        \label{}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{session6/Assignment6-5-parking_regularize-True.pdf}
+        \caption{Predicted trajectory}
+        \label{}
+    \end{subfigure}
+    \caption{Final iterates of the method with regularization.}
+    \label{fig:results_reg}
+\end{figure}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.75\textwidth]{images/assignment6/min-eig-regularize.png}
+	\caption{Smallest eigenvalues of regularized QP Hessians.}
+	\label{fig:eig_hessian-regularize}
+\end{figure}
 
 \end{document}
 
